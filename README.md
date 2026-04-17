@@ -1,7 +1,7 @@
 # PATHFINDER
 Student Internship and Job Shadowing Platform
 
-#OVERVIEW
+# OVERVIEW
 
 PathFinder is a web platform that connects students with parents and professionals from the same school community.
 It helps students discover internship and job shadowing opportunities using trusted school networks.
@@ -11,7 +11,7 @@ Parents can list opportunities, review applications, and interact with students 
 
 This project focuses on improving career exposure for students at an early stage.
 
-#PROBLEM THIS PROJECT SOLVES
+# PROBLEM THIS PROJECT SOLVES
 
 Many students struggle to find real world experience opportunities.
 Cold emailing companies often fails.
@@ -24,7 +24,7 @@ PathFinder solves this by:
 • Making applications simple and organized
 • Providing messaging between students and parents
 
-#CORE FEATURES
+# CORE FEATURES
 
 Authentication
 • Secure login system using Firebase Authentication
@@ -58,7 +58,7 @@ Application Management
 • Parents review candidate information
 • Application records stored in database
 
-#PROJECT STRUCTURE
+# PROJECT STRUCTURE
 
 index.html
 Main entry point. Redirects users based on login and role.
@@ -84,7 +84,7 @@ Shows applications submitted by students.
 messaging.html
 Handles communication between users.
 
-#TECHNOLOGIES USED
+# TECHNOLOGIES USED
 
 Frontend
 • HTML
@@ -99,7 +99,7 @@ Other Tools
 • Google Fonts
 • Firebase SDK
 
-#HOW IT WORKS
+# HOW IT WORKS
 
 User logs in through the login page
 Firebase verifies authentication
@@ -111,7 +111,7 @@ Students apply to internships
 Parents review applications
 Users communicate through messaging
 
-#INSTALLATION AND SETUP
+# INSTALLATION AND SETUP
 
 To run this project locally:
 
@@ -135,7 +135,7 @@ Turn on:
 Open login.html in your browser
 You can also deploy using Firebase Hosting.
 
-#FUTURE IMPROVEMENTS
+# FUTURE IMPROVEMENTS
 
 • Add search filters for internships
 • Add resume upload feature
@@ -145,7 +145,7 @@ You can also deploy using Firebase Hosting.
 • Add internship recommendation system
 • Create mobile responsive layout
 
-#USE CASES
+# USE CASES
 
 Students
 • Discover internship opportunities
@@ -162,7 +162,7 @@ Schools
 • Track internship participation
 • Build stronger community links
 
-#PROJECT GOALS
+# PROJECT GOALS
 
 This project aims to:
 
@@ -170,9 +170,3 @@ This project aims to:
 • Strengthen school community connections
 • Provide real world learning opportunities
 • Create a scalable internship platform
-
-#AUTHOR
-
-Name: Aryan Shah
-Project: PathFinder
-Focus Areas: Robotics, Mechanical Engineering, and Software Development
