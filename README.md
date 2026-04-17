@@ -1,4 +1,4 @@
-#PATHFINDER
+# PATHFINDER
 Student Internship and Job Shadowing Platform
 
 #OVERVIEW
