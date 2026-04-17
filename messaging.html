@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PathFinder | Messaging</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+</head>
+
+<body>
+    <nav>
+    <div class="logo">
+      <div class="logo-icon">🎓</div> PathFinder
+    </div>
+    <div class="nav-links">
+      <a href="studentdashboard.html">Browse</a>
+      <a href="myapplication.html">My Applications</a>
+      <a href="messaging.html" class="active">Messages</a>
+    </div>
+    <div class="profile-area">
+      <span id="user-name-display">Loading...</span>
+      <div class="avatar" id="user-initial">P</div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+<div class="messaging-container">
+    <div class="chat-sidebar">
+        <h2 class="sidebar-title">Conversations</h2>
+        
+        <div class="search-box">
+            <input type="text" id="userSearch" placeholder="Search for users..." onkeyup="searchUsers()">
+            <div id="searchResults" class="search-results-dropdown"></div>
+        </div>
+
+        <div id="activeChatsList" class="conversation-list">
+            <p style="padding:20px; color:#6b7280; font-size:13px; text-align:center;">Loading chats...</p>
+        </div>
+    </div>
+
+    <div class="chat-main">
+        <div id="chatHeader" class="chat-header" style="display:none;">
+            <div class="header-info">
+                <div class="avatar-large" id="headerInitial">?</div>
+                <div>
+                    <h3 id="headerName">Select a user</h3>
+                    <span class="status-text">PathFinder Community</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+            <h3>Select a conversation</h3>
+            <p>Choose a person from the left or search to start chatting.</p>
+        </div>
+
+        <div id="chatBox" class="chat-messages" style="display:none;"></div>
+
+        <div id="inputArea" class="chat-input-area" style="display:none;">
+            <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" class="send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --bg-dark: #0b0f14;       
+        --card-bg: #111827;       
+        --border-color: #1f2937;  
+        --text-gray: #9ca3af;
+        --accent-yellow: #facc15;
+    }
+    body {
+        background-color: #0b0f14; 
+        background-color: var(--bg-dark); 
+        color: white;
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh; 
+    }
+    nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 60px;
+        background: rgba(17, 24, 39, 0.8);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+    .logo-icon { background: var(--accent-yellow); color: black; padding: 5px; border-radius: 6px; }
+    .nav-links { display: flex; gap: 30px; font-size: 14px; color: var(--text-gray); }
+    .nav-links a { color: inherit; text-decoration: none; transition: 0.3s; }
+    .nav-links a.active, .nav-links a:hover { color: white; }
+
+    .profile-area { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; }
+
+    .logout-btn {
+        background: none; border: 1px solid #f87171; color: #f87171;
+        padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+
+    /* Layout */
+    .messaging-container { 
+        display: flex; 
+        /* 3. ADJUST HEIGHT TO FILL SCREEN MINUS HEADER */
+        height: calc(100vh - 100px); 
+        margin: 20px 60px; /* Add some spacing from the edges */
+        background: var(--bg-dark); 
+        border: 1px solid var(--border-color); 
+        border-radius: 16px; 
+        overflow: hidden; 
+        font-family: 'Inter', sans-serif; 
+    }
+    
+    /* Sidebar Styling */
+    .chat-sidebar { 
+        width: 320px; 
+        background: var(--card-bg); /* Uses the slightly lighter variable */
+        border-right: 1px solid var(--border-color); 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .sidebar-title { padding: 20px; margin: 0; font-size: 18px; color: white; border-bottom: 1px solid var(--border-color); }
+    
+    .search-box { padding: 15px; position: relative; }
+    .search-box input { width: 100%; background: #1f2937; border: 1px solid #374151; color: white; padding: 10px 15px; border-radius: 8px; box-sizing: border-box; }
+    .search-results-dropdown { position: absolute; top: 55px; left: 15px; width: calc(100% - 30px); background: #1f2937; border: 1px solid #374151; border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+    .search-result-item { padding: 10px; cursor: pointer; color: #d1d5db; border-bottom: 1px solid #374151; }
+    .search-result-item:hover { background: #374151; color: #facc15; }
+
+    .conversation-list { flex-grow: 1; overflow-y: auto; }
+    .convo-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .convo-item:hover, .convo-item.active { background: #1f2937; }
+    .convo-item h4 { margin: 0; color: white; font-size: 14px; }
+    .convo-item p { margin: 2px 0 0; color: #9ca3af; font-size: 12px; }
+
+    /* Main Chat Styling */
+    .chat-main { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg-dark); position: relative; }
+    
+    .chat-header { padding: 15px 25px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; }
+    .header-info { display: flex; align-items: center; gap: 15px; }
+    .header-info h3 { margin: 0; font-size: 16px; color: white; }
+    .status-text { color: #9ca3af; font-size: 12px; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; }
+    
+    .chat-messages { flex-grow: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    
+    /* Message Bubbles */
+    .msg-row { display: flex; width: 100%; }
+    .msg-bubble { max-width: 60%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; position: relative; }
+    
+    .msg-row.received { justify-content: flex-start; }
+    .received .msg-bubble { background: #1f2937; color: #e5e7eb; border-top-left-radius: 2px; }
+    
+    .msg-row.sent { justify-content: flex-end; }
+    .sent .msg-bubble { background: #facc15; color: #111827; border-top-right-radius: 2px; font-weight: 500; }
+    
+    .timestamp { font-size: 10px; margin-top: 5px; opacity: 0.7; text-align: right; display: block; }
+
+    /* Input Area */
+    .chat-input-area { padding: 20px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; gap: 10px; }
+    .chat-input-area input { flex-grow: 1; background: #0b0f14; border: 1px solid #374151; color: white; padding: 12px 15px; border-radius: 8px; }
+    .send-btn { background: #facc15; border: none; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; color: #111827; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .send-btn:hover { background: #eab308; }
+
+    .avatar-small, .avatar-large { background: #374151; color: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .avatar-small { width: 35px; height: 35px; font-size: 14px; }
+    .avatar-large { width: 40px; height: 40px; font-size: 16px; }
+</style>
+
+
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k",
+    authDomain: "eportfolio-8af75.firebaseapp.com",
+    projectId: "eportfolio-8af75"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+
+  });
+  let activeChatId = null;
+let messageListener = null;
+
+// 1. Initialize: Load Sidebar List on Startup
+firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+        loadConversationList();
+    }
+});
+
+// 2. Logic to Find People You've Talked To
+function loadConversationList() {
+    const myUid = firebase.auth().currentUser.uid;
+    const conversations = new Set();
+    const listDiv = document.getElementById('activeChatsList');
+    
+    // We fetch all messages where I am the Sender OR Receiver
+    // Note: In a real production app, you'd make a separate 'conversations' collection for efficiency.
+    // For this project, we will fetch messages and filter unique users manually.
+    
+    db.collection("messages").orderBy("timestamp", "desc").get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const m = doc.data();
+            if (m.senderId === myUid) conversations.add(m.receiverId);
+            if (m.receiverId === myUid) conversations.add(m.senderId);
+        });
+
+        // Now we have a Set of User IDs. Let's fetch their Names.
+        renderSidebar(Array.from(conversations));
+    });
+}
+
+function renderSidebar(userIds) {
+    const listDiv = document.getElementById('activeChatsList');
+    listDiv.innerHTML = ""; // Clear "Loading..."
+
+    if (userIds.length === 0) {
+        listDiv.innerHTML = "<p style='padding:20px; color:#6b7280; font-size:12px; text-align:center;'>No conversations yet.</p>";
+        return;
+    }
+
+    userIds.forEach(id => {
+        db.collection("users").doc(id).get().then(doc => {
+            if (doc.exists) {
+                const u = doc.data();
+                const initial = u.name.charAt(0).toUpperCase();
+                
+                listDiv.innerHTML += `
+                    <div class="convo-item" onclick="openChat('${id}', '${u.name}')" id="user-row-${id}">
+                        <div class="avatar-small">${initial}</div>
+                        <div>
+                            <h4>${u.name}</h4>
+                            <p>${u.role}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    });
+}
+
+// 3. Search for NEW people
+function searchUsers() {
+    const query = document.getElementById('userSearch').value.toLowerCase();
+    const drop = document.getElementById('searchResults');
+    
+    if (query.length < 2) { drop.style.display = 'none'; return; }
+
+    db.collection("users").get().then(snapshot => {
+        drop.innerHTML = "";
+        let found = false;
+        
+        snapshot.forEach(doc => {
+            const u = doc.data();
+            // Don't show myself
+            if (doc.id !== firebase.auth().currentUser.uid && u.name.toLowerCase().includes(query)) {
+                found = true;
+                drop.innerHTML += `
+                    <div class="search-result-item" onclick="openChat('${doc.id}', '${u.name}')">
+                        ${u.name} <small>(${u.role})</small>
+                    </div>`;
+            }
+        });
+        drop.style.display = found ? 'block' : 'none';
+    });
+}
+
+// 4. Open a Chat
+function openChat(partnerId, partnerName) {
+    activeChatId = partnerId;
+    
+    // UI Updates
+    document.getElementById('searchResults').style.display = 'none'; // Hide search dropdown
+    document.getElementById('userSearch').value = ""; // Clear search
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('chatHeader').style.display = 'flex';
+    document.getElementById('chatBox').style.display = 'flex';
+    document.getElementById('inputArea').style.display = 'flex';
+    
+    document.getElementById('headerName').innerText = partnerName;
+    document.getElementById('headerInitial').innerText = partnerName.charAt(0).toUpperCase();
+
+    // Highlight active sidebar item
+    document.querySelectorAll('.convo-item').forEach(el => el.classList.remove('active'));
+    const activeRow = document.getElementById(`user-row-${partnerId}`);
+    if(activeRow) activeRow.classList.add('active');
+
+    loadMessages();
+}
+
+// 5. Load Real-Time Messages
+function loadMessages() {
+    const myUid = firebase.auth().currentUser.uid;
+    const chatBox = document.getElementById('chatBox');
+
+    if (messageListener) messageListener(); // Unsubscribe previous listener
+
+    messageListener = db.collection("messages")
+        .orderBy("timestamp", "asc")
+        .onSnapshot(snapshot => {
+            chatBox.innerHTML = "";
+            
+            snapshot.forEach(doc => {
+                const m = doc.data();
+                const isBetweenUs = (m.senderId === myUid && m.receiverId === activeChatId) || 
+                                    (m.senderId === activeChatId && m.receiverId === myUid);
+
+                if (isBetweenUs) {
+                    const isMine = m.senderId === myUid;
+                    const date = m.timestamp ? new Date(m.timestamp.seconds * 1000) : new Date();
+                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    chatBox.innerHTML += `
+                        <div class="msg-row ${isMine ? 'sent' : 'received'}">
+                            <div class="msg-bubble">
+                                ${m.text}
+                                <span class="timestamp">${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to bottom
+        });
+}
+
+function handleKeyPress(e) { if (e.key === "Enter") sendMessage(); }
+
+function sendMessage() {
+    const text = document.getElementById('msgInput').value.trim();
+    if (!text || !activeChatId) return;
+
+    db.collection("messages").add({
+        text: text,
+        senderId: firebase.auth().currentUser.uid,
+        receiverId: activeChatId,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        document.getElementById('msgInput').value = "";
+        loadConversationList(); // Refresh sidebar to ensure this user is now in the list
+    });
+}
+</script>
+</body>
+</html>
+

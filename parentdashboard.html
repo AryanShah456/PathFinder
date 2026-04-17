@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PathFinder | Parent Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0b0f14; --card: #111827; --accent: #facc15; --blue: #2563eb; }
+    body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; }
+    
+    /* Top Header Navigation */
+    header {
+      background: var(--card);
+      padding: 0 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      height: 70px;
+    }
+    .nav-links { display: flex; gap: 30px; }
+    .nav-item { cursor: pointer; color: #9ca3af; font-size: 14px; font-weight: 500; transition: 0.3s; }
+    .nav-item:hover, .nav-item.active { color: var(--accent); }
+
+    .main { padding: 40px 60px; max-width: 1000px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Form Styling */
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 12px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; }
+    input, textarea, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: white; border-radius: 8px; box-sizing: border-box; }
+    .publish-btn { background: var(--blue); color: white; border: none; padding: 14px 30px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; }
+
+    .profile-trigger { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .avatar { width: 32px; height: 32px; background: var(--accent); border-radius: 50%; color: black; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div style="font-weight: 700; color: var(--accent); font-size: 20px;">PathFinder</div>
+    <div class="nav-links">
+      <div class="nav-item active" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="nav-item" onclick="showTab('listing')">List Opportunity</div>
+      <div class="nav-item" onclick="showTab('applicants')">View Applicants</div>
+      <div class="nav-item" onclick="showTab('messages')">Messaging</div>
+    </div>
+    <div class="profile-trigger" onclick="showTab('profile')">
+      <span id="parent-name" style="font-size: 14px;">Parent</span>
+      <div class="avatar" id="parent-initial">P</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="listing" class="tab-content active">
+      <h1>Post Opportunity</h1>
+      <div style="background:var(--card); padding:30px; border-radius:12px; border: 1px solid rgba(255,255,255,0.05);">
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="oppTitle" placeholder="e.g. Marketing Assistant">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="oppType">
+            <option value="Internship">Internship</option>
+            <option value="Job Shadowing">Job Shadowing</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <input type="text" id="oppDuration" placeholder="e.g. 2 weeks, 3 months, 1 day">
+        </div>
+        <div class="form-group">
+            <label>Requirements</label>
+            <textarea id="oppReqs" rows="3" placeholder="e.g. Must have own laptop, basic Python knowledge, or Grade 11+"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="oppDesc" rows="4" placeholder="What will the student be doing?"></textarea>
+        </div>
+        <button class="publish-btn" onclick="publishOpp()">Publish Opportunity</button>
+      </div>
+    </div>
+
+    <div id="dashboard" class="tab-content"><h1>Parent Dashboard</h1><p>Welcome to your overview.</p></div>
+    <div id="applicants" class="tab-content">
+        <div id="applicants-section" style="margin-top: 40px; padding: 20px;">
+  <h2 style="color: #facc15; border-bottom: 2px solid #1f2937; padding-bottom: 10px;">New Applicants</h2>
+  <div id="applicants-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px;">
+    <p id="no-apps-msg" style="color: #9ca3af;">No applications received yet.</p>
+  </div>
+</div>
+    </div>
+    <div id="messages" class="tab-content">
+        <div class="messaging-container">
+    <div class="chat-sidebar">
+        <h2 class="sidebar-title">Conversations</h2>
+        
+        <div class="search-box">
+            <input type="text" id="userSearch" placeholder="Search for users..." onkeyup="searchUsers()">
+            <div id="searchResults" class="search-results-dropdown"></div>
+        </div>
+
+        <div id="activeChatsList" class="conversation-list">
+            <p style="padding:20px; color:#6b7280; font-size:13px; text-align:center;">Loading chats...</p>
+        </div>
+    </div>
+
+    <div class="chat-main">
+        <div id="chatHeader" class="chat-header" style="display:none;">
+            <div class="header-info">
+                <div class="avatar-large" id="headerInitial">?</div>
+                <div>
+                    <h3 id="headerName">Select a user</h3>
+                    <span class="status-text">PathFinder Community</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+            <h3>Select a conversation</h3>
+            <p>Choose a person from the left or search to start chatting.</p>
+        </div>
+
+        <div id="chatBox" class="chat-messages" style="display:none;"></div>
+
+        <div id="inputArea" class="chat-input-area" style="display:none;">
+            <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" class="send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Layout */
+    .messaging-container { display: flex; height: 75vh; background: #0b0f14; border: 1px solid #1f2937; border-radius: 16px; overflow: hidden; font-family: 'Inter', sans-serif; }
+    
+    /* Sidebar Styling */
+    .chat-sidebar { width: 320px; background: #111827; border-right: 1px solid #1f2937; display: flex; flex-direction: column; }
+    .sidebar-title { padding: 20px; margin: 0; font-size: 18px; color: white; border-bottom: 1px solid #1f2937; }
+    
+    .search-box { padding: 15px; position: relative; }
+    .search-box input { width: 100%; background: #1f2937; border: 1px solid #374151; color: white; padding: 10px 15px; border-radius: 8px; box-sizing: border-box; }
+    .search-results-dropdown { position: absolute; top: 55px; left: 15px; width: calc(100% - 30px); background: #1f2937; border: 1px solid #374151; border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+    .search-result-item { padding: 10px; cursor: pointer; color: #d1d5db; border-bottom: 1px solid #374151; }
+    .search-result-item:hover { background: #374151; color: #facc15; }
+
+    .conversation-list { flex-grow: 1; overflow-y: auto; }
+    .convo-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .convo-item:hover, .convo-item.active { background: #1f2937; }
+    .convo-item h4 { margin: 0; color: white; font-size: 14px; }
+    .convo-item p { margin: 2px 0 0; color: #9ca3af; font-size: 12px; }
+
+    /* Main Chat Styling */
+    .chat-main { flex-grow: 1; display: flex; flex-direction: column; background: #0b0f14; position: relative; }
+    
+    .chat-header { padding: 15px 25px; background: #111827; border-bottom: 1px solid #1f2937; display: flex; align-items: center; }
+    .header-info { display: flex; align-items: center; gap: 15px; }
+    .header-info h3 { margin: 0; font-size: 16px; color: white; }
+    .status-text { color: #9ca3af; font-size: 12px; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; }
+    
+    .chat-messages { flex-grow: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    
+    /* Message Bubbles - Matching your image */
+    .msg-row { display: flex; width: 100%; }
+    .msg-bubble { max-width: 60%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; position: relative; }
+    
+    /* Received (Left, Grey) */
+    .msg-row.received { justify-content: flex-start; }
+    .received .msg-bubble { background: #1f2937; color: #e5e7eb; border-top-left-radius: 2px; }
+    
+    /* Sent (Right, Yellow Accent) */
+    .msg-row.sent { justify-content: flex-end; }
+    .sent .msg-bubble { background: #facc15; color: #111827; border-top-right-radius: 2px; font-weight: 500; }
+    
+    .timestamp { font-size: 10px; margin-top: 5px; opacity: 0.7; text-align: right; display: block; }
+
+    /* Input Area */
+    .chat-input-area { padding: 20px; background: #111827; border-top: 1px solid #1f2937; display: flex; gap: 10px; }
+    .chat-input-area input { flex-grow: 1; background: #0b0f14; border: 1px solid #374151; color: white; padding: 12px 15px; border-radius: 8px; }
+    .send-btn { background: #facc15; border: none; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; color: #111827; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .send-btn:hover { background: #eab308; }
+
+    /* Avatars */
+    .avatar-small, .avatar-large { background: #374151; color: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .avatar-small { width: 35px; height: 35px; font-size: 14px; }
+    .avatar-large { width: 40px; height: 40px; font-size: 16px; }
+</style>
+    </div>
+    <div id="profile" class="tab-content">
+      <h1>Your Profile</h1>
+      <button onclick="logout()" style="color:#f87171; background:none; border:1px solid #f87171; padding:10px; border-radius:8px; cursor:pointer;">Logout</button>
+    </div>
+  </div>
+
+<script>
+// YOUR FIREBASE CONFIG
+  var firebaseConfig = { 
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k", 
+    authDomain: "eportfolio-8af75.firebaseapp.com", 
+    projectId: "eportfolio-8af75" 
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Security Check & UI initialization
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "login.html";
+    } else {
+      db.collection("users").doc(user.uid).get().then(doc => {
+        if (doc.exists) {
+          document.getElementById('parent-name').innerText = doc.data().name;
+          document.getElementById('parent-initial').innerText = doc.data().name[0];
+        }
+      });
+      loadApplicants(); // Call the loader here
+      loadConversationList(); // Call chat loader
+    }
+  });
+
+  function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function publishOpp() {
+    const user = firebase.auth().currentUser;
+    const title = document.getElementById('oppTitle').value;
+    const type = document.getElementById('oppType').value;
+    const duration = document.getElementById('oppDuration').value;
+    const desc = document.getElementById('oppDesc').value;
+    const reqs = document.getElementById('oppReqs').value;
+
+    if(!title || !duration) return alert("Please fill in title and duration");
+
+    db.collection("users").doc(user.uid).get().then(doc => {
+      let parentDisplayName = doc.exists ? doc.data().name : "Anonymous";
+      return db.collection("opportunities").add({
+        title: title,
+        type: type,
+        duration: duration,
+        description: desc,
+        requirements: reqs,
+        postedBy: user.uid,
+        parentName: parentDisplayName,
+        listingStatus: "Open", 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }).then(() => {
+      alert("Successfully Published!");
+      document.getElementById('oppReqs').value = ""; 
+    });
+  }
+
+  // --- APPLICANTS LOGIC ---
+  function loadApplicants() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    db.collection("applications")
+      .where("parentId", "==", user.uid)
+      .where("status", "==", "Pending") // Filter only pending here
+      .onSnapshot((snapshot) => {
+        const grid = document.getElementById('applicants-grid');
+        const noMsg = document.getElementById('no-apps-msg');
+        
+        if (snapshot.empty) {
+          if(noMsg) noMsg.style.display = "block";
+          grid.innerHTML = "";
+          return;
+        }
+
+        if(noMsg) noMsg.style.display = "none";
+        grid.innerHTML = ""; 
+
+        snapshot.forEach((doc) => {
+          const app = doc.data();
+          // IMPORTANT: passing app.opportunityId into the function call below
+          grid.innerHTML += `
+            <div style="background: #111827; border: 1px solid #1f2937; padding: 25px; border-radius: 16px; color: white;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #facc15;">${app.studentName}</h3>
+                <span style="font-size: 12px; background: #374151; padding: 4px 8px; border-radius: 4px;">Grade ${app.studentGrade}</span>
+              </div>
+              
+              <p style="font-size: 14px; color: #9ca3af; margin-bottom: 20px;">
+                <strong>Opportunity:</strong> ${app.opportunityTitle}
+              </p>
+
+              <div style="background: #0b0f14; padding: 15px; border-radius: 8px; font-size: 13px; margin-bottom: 15px;">
+                <p><strong>Deserve:</strong> ${app.q1}</p>
+                <p><strong>Interest:</strong> ${app.q2}</p>
+              </div>
+
+              <div style="display: flex; gap: 10px; flex-direction: column;">
+                <a href="${app.cvUrl}" target="_blank" style="text-align: center; color: #60a5fa; text-decoration: none; font-size: 14px; margin-bottom: 10px;">🔗 View Student CV</a>
+                
+                <div style="display: flex; gap: 10px;">
+                  <button onclick="updateAppStatus('${doc.id}', 'Accepted', '${app.opportunityId}')" style="flex: 1; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Accept</button>
+                  <button onclick="updateAppStatus('${doc.id}', 'Declined', '${app.opportunityId}')" style="flex: 1; background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Decline</button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      });
+  }
+
+  function updateAppStatus(appId, newStatus, oppId) {
+    db.collection("applications").doc(appId).update({
+      status: newStatus
+    }).then(() => {
+      // If Accepted, change listingStatus to Closed
+      if (newStatus === "Accepted" && oppId) {
+        db.collection("opportunities").doc(oppId).update({
+          listingStatus: "Closed"
+        }).then(() => {
+          alert("Application Accepted! The listing is now hidden for students.");
+        });
+      } else {
+        alert("Application " + newStatus);
+      }
+    }).catch(error => console.error("Error:", error));
+  }
+
+  // --- CHAT LOGIC (Kept as is) ---
+  let activeChatId = null;
+  let messageListener = null;
+
+  function loadConversationList() {
+      const myUid = firebase.auth().currentUser.uid;
+      const conversations = new Set();
+      db.collection("messages").orderBy("timestamp", "desc").get().then(snapshot => {
+          snapshot.forEach(doc => {
+              const m = doc.data();
+              if (m.senderId === myUid) conversations.add(m.receiverId);
+              if (m.receiverId === myUid) conversations.add(m.senderId);
+          });
+          renderSidebar(Array.from(conversations));
+      });
+  }
+
+  function renderSidebar(userIds) {
+      const listDiv = document.getElementById('activeChatsList');
+      listDiv.innerHTML = ""; 
+      userIds.forEach(id => {
+          db.collection("users").doc(id).get().then(doc => {
+              if (doc.exists) {
+                  const u = doc.data();
+                  listDiv.innerHTML += `
+                      <div class="convo-item" onclick="openChat('${id}', '${u.name}')" id="user-row-${id}">
+                          <div class="avatar-small">${u.name.charAt(0)}</div>
+                          <div><h4>${u.name}</h4><p>${u.role}</p></div>
+                      </div>`;
+              }
+          });
+      });
+  }
+
+  function searchUsers() {
+      const query = document.getElementById('userSearch').value.toLowerCase();
+      const drop = document.getElementById('searchResults');
+      if (query.length < 2) { drop.style.display = 'none'; return; }
+      db.collection("users").get().then(snapshot => {
+          drop.innerHTML = "";
+          let found = false;
+          snapshot.forEach(doc => {
+              const u = doc.data();
+              if (doc.id !== firebase.auth().currentUser.uid && u.name.toLowerCase().includes(query)) {
+                  found = true;
+                  drop.innerHTML += `<div class="search-result-item" onclick="openChat('${doc.id}', '${u.name}')">${u.name}</div>`;
+              }
+          });
+          drop.style.display = found ? 'block' : 'none';
+      });
+  }
+
+  function openChat(partnerId, partnerName) {
+      activeChatId = partnerId;
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('chatHeader').style.display = 'flex';
+      document.getElementById('chatBox').style.display = 'flex';
+      document.getElementById('inputArea').style.display = 'flex';
+      document.getElementById('headerName').innerText = partnerName;
+      loadMessages();
+  }
+
+  function loadMessages() {
+      const myUid = firebase.auth().currentUser.uid;
+      const chatBox = document.getElementById('chatBox');
+      if (messageListener) messageListener();
+      messageListener = db.collection("messages").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+          chatBox.innerHTML = "";
+          snapshot.forEach(doc => {
+              const m = doc.data();
+              if ((m.senderId === myUid && m.receiverId === activeChatId) || (m.senderId === activeChatId && m.receiverId === myUid)) {
+                  const isMine = m.senderId === myUid;
+                  chatBox.innerHTML += `<div class="msg-row ${isMine ? 'sent' : 'received'}"><div class="msg-bubble">${m.text}</div></div>`;
+              }
+          });
+          chatBox.scrollTop = chatBox.scrollHeight;
+      });
+  }
+
+  function sendMessage() {
+      const text = document.getElementById('msgInput').value.trim();
+      if (!text || !activeChatId) return;
+      db.collection("messages").add({
+          text: text,
+          senderId: firebase.auth().currentUser.uid,
+          receiverId: activeChatId,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+          document.getElementById('msgInput').value = "";
+      });
+  }
+
+  function logout() { firebase.auth().signOut().then(() => window.location.href = "login.html"); }
+</script>

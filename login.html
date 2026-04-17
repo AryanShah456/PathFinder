@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PathFinder | Login</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 200, 80, 0.15), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(255, 170, 0, 0.12), transparent 45%),
+        #0b0f14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      color: white;
+    }
+
+    .login-card {
+      background: #111827;
+      padding: 40px;
+      width: 360px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 200, 80, 0.15);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    h1 { font-size: 24px; margin-bottom: 8px; color: #facc15; }
+    p { font-size: 14px; color: #9ca3af; margin-bottom: 25px; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #0f172a;
+      color: white;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .login-btn {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+    }
+
+    .signup-btn {
+      background: #1f2937;
+      color: #e5e7eb;
+    }
+
+    .password-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+
+    .password-toggle input {
+      accent-color: #facc15;
+    }
+
+    .error {
+      color: #f87171;
+      font-size: 13px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-card">
+    <h1>Welcome to PathFinder</h1>
+    <p>Sign in or create an account</p>
+
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+
+    <div class="password-toggle">
+      <input type="checkbox" onclick="togglePassword()"> Show password
+    </div>
+
+    <button class="login-btn" onclick="login()">Login</button>
+    <button class="signup-btn" onclick="signup()">Create Account</button>
+
+    <div class="error" id="error"></div>
+  </div>
+
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k",
+    authDomain: "eportfolio-8af75.firebaseapp.com",
+    projectId: "eportfolio-8af75"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function login() {
+    firebase.auth().signInWithEmailAndPassword(
+      email.value, password.value
+    ).then(user => {
+      db.collection("users").doc(user.user.uid).get().then(doc => {
+        if (!doc.exists || !doc.data().setupComplete) {
+          window.location.href = "setup-profile.html";
+        } else {
+          window.location.href = "index.html";
+        }
+      });
+    }).catch(err => error.innerText = err.message);
+  }
+
+  function signup() {
+    firebase.auth().createUserWithEmailAndPassword(
+      email.value, password.value
+    ).then(() => {
+      window.location.href = "setup-profile.html";
+    }).catch(err => error.innerText = err.message);
+  }
+
+  function togglePassword() {
+    password.type = password.type === "password" ? "text" : "password";
+  }
+</script>
+</body>
+</html>

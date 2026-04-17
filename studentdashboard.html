@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PathFinder | Browse Opportunities</title>
+
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #0b0f14;
+      --card-bg: #111827;
+      --accent-yellow: #facc15;
+      --text-gray: #9ca3af;
+      --input-bg: #0f172a;
+    }
+    body {
+      background: var(--bg-dark);
+      color: white;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    /* Navbar Styling */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: rgba(17, 24, 39, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+    .logo-icon { background: var(--accent-yellow); color: black; padding: 5px; border-radius: 6px; }
+    .nav-links { display: flex; gap: 30px; font-size: 14px; color: var(--text-gray); }
+    .nav-links a { color: inherit; text-decoration: none; transition: 0.3s; }
+    .nav-links a.active, .nav-links a:hover { color: white; }
+    .profile-area { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; }
+    /* Main Content Area */
+    .container { padding: 40px 60px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    h1 { font-size: 32px; margin-bottom: 10px; }
+    .subtitle { color: var(--text-gray); margin-bottom: 40px; }
+    /* Search & Filter Bar */
+    .filter-bar {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .search-input {
+      flex-grow: 1;
+      background: var(--input-bg);
+      border: 1px solid #1f2937;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+    }
+    .filter-select {
+      background: var(--input-bg);
+      border: 1px solid #1f2937;
+      color: white;
+      padding: 0 15px;
+      border-radius: 8px;
+    }
+    /* Opportunities Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 25px;
+    }
+    .opportunity-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 24px;
+      transition: 0.3s;
+    }
+    .opportunity-card:hover { transform: translateY(-5px); border-color: var(--accent-yellow); }
+    .tags { display: flex; gap: 8px; margin-bottom: 15px; }
+    .tag { padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+    .tag.intern { background: rgba(250, 204, 21, 0.1); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
+    .card-title { font-size: 20px; margin: 10px 0; }
+    .company { color: var(--text-gray); font-size: 14px; margin-bottom: 15px; display: block; }
+    .description { font-size: 14px; color: var(--text-gray); line-height: 1.6; margin-bottom: 20px; }
+    .details-btn {
+      width: 100%;
+      padding: 12px;
+      background: rgba(37, 99, 235, 0.1);
+      color: #60a5fa;
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .logout-btn {
+      background: none; border: 1px solid #f87171; color: #f87171;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo">
+      <div class="logo-icon">🎓</div> PathFinder
+    </div>
+    <div class="nav-links">
+      <a href="studentdashboard.html" class="active">Browse</a>
+      <a href="myapplication.html">My Applications</a>
+      <a href="messaging.html">Messages</a>
+    </div>
+    <div class="profile-area">
+      <span id="user-name-display">Loading...</span>
+      <div class="avatar" id="user-initial">A</div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>Browse Opportunities</h1>
+    <p class="subtitle">Discover internships and job shadowing experiences from our community</p>
+
+    <div class="filter-bar">
+      <input type="text" class="search-input" placeholder="Search by title, company, or description...">
+      <select class="filter-select"><option>All Industries</option></select>
+      <select class="filter-select"><option>All Types</option></select>
+    </div>
+
+    <div id="opportunity-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
+      <div id="opportunity-container" style="
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+    gap: 24px; 
+    padding: 20px 0;">
+    </div>
+    </div>
+  </div> 
+  
+  <script>
+const firebaseConfig = { 
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k", 
+    authDomain: "eportfolio-8af75.firebaseapp.com", 
+    projectId: "eportfolio-8af75" 
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+        db.collection("users").doc(user.uid).get().then(doc => {
+            if (doc.exists) {
+                const userData = doc.data();
+                document.getElementById('user-name-display').innerText = userData.name || "Student";
+            } else {
+                document.getElementById('user-name-display').innerText = "User";
+            }
+        }).catch(error => {
+            console.error("Error fetching name:", error);
+        });
+    } else {
+        window.location.href = "login.html";
+    }
+});
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        loadOpenOpportunities();
+    } else {
+        window.location.href = "login.html";
+    }
+});
+function loadOpenOpportunities() {
+    db.collection("opportunities")
+      .where("listingStatus", "==", "Open")
+      .orderBy("createdAt", "desc")
+      .onSnapshot((snapshot) => {
+        const grid = document.getElementById('opportunity-grid');
+        grid.innerHTML = ""; 
+        if (snapshot.empty) {
+            grid.innerHTML = "<p style='color: #6b7280;'>No open opportunities available right now.</p>";
+            return;
+        }
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            grid.innerHTML += `
+                <div class="opp-card">
+                    <div class="tag-row">
+                        <span class="tag" style="background: #facc1520; color: #facc15; border-color: #facc1530;">${data.type || 'Internship'}</span>
+                    </div>
+                    <h3 style="margin: 8px 0 4px 0; font-size: 20px;">${data.title}</h3>
+                    <div style="display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 14px;">
+                        <span>🏢</span> <span>${data.parentName || 'Community Member'}</span>
+                    </div>
+                    <p style="color: #9ca3af; font-size: 14px; line-height: 1.5; margin: 8px 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                        ${data.description}
+                    </p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; color: #facc15; font-size: 13px; margin-bottom: 10px;">
+                        <span>⏱️ ${data.duration || 'TBD'}</span>
+                        <span>👥 1 spot</span>
+                    </div>
+                    <button onclick="window.location.href='apply.html?id=${doc.id}'" class="btn-view">
+                        View Details
+                    </button>
+                </div>
+            `;
+        });
+    }, (error) => {
+        console.error("Firestore Error:", error);
+    });
+}
+function logout() {
+    firebase.auth().signOut().then(() => {
+        window.location.href = "login.html";
+    });
+}
+
+</script>

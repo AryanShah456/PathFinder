@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PathFinder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+
+  <style>
+    body {
+      background: #0b0f14;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #111827;
+      padding: 50px;
+      border-radius: 16px;
+      text-align: center;
+      width: 420px;
+    }
+
+    h1 { color: #facc15; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Please be Patient</h1>
+    <p>Redirecting you to your dashboard...</p>
+  </div>
+
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k",
+    authDomain: "eportfolio-8af75.firebaseapp.com",
+    projectId: "eportfolio-8af75"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+
+    db.collection("users").doc(user.uid).get().then(doc => {
+      if (!doc.exists || !doc.data().setupComplete) {
+        window.location.href = "setup-profile.html";
+        return;
+      }
+
+      if (doc.data().role === "student") {
+        window.location.href = "studentdashboard.html";
+      } else {
+        window.location.href = "parentdashboard.html";
+      }
+    });
+  });
+</script>
+</body>
+</html>
+

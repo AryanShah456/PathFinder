@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications | PathFinder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0b0f14;
+            --card-bg: #111827;
+            --border-color: #1f2937;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --accent-yellow: #facc15;
+            --status-pending: #facc15;
+            --status-accepted: #10b981;
+            --status-declined: #ef4444;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 40px;
+        }
+
+        h1 { font-size: 32px; margin-bottom: 8px; }
+        .subtitle { color: var(--text-secondary); font-size: 16px; }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .filter-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-color: var(--accent-yellow);
+        }
+
+        /* Application Cards */
+        #my-apps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .app-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .app-card:hover { border-color: #374151; }
+
+        .app-info h3 { margin: 0 0 4px 0; font-size: 20px; }
+        .company-name { color: var(--accent-yellow); font-size: 14px; margin-bottom: 12px; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .quote {
+            font-style: italic;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-left: 2px solid var(--border-color);
+            padding-left: 10px;
+            margin: 10px 0 0 0;
+        }
+
+        .view-btn {
+            background: #1f2937;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+        }
+
+        .view-btn:hover { background: #374151; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <a href="studentdashboard.html" style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">← Back to Browse</a>
+            <h1>My Applications</h1>
+            <p class="subtitle">Track the status of your opportunity applications</p>
+        </header>
+
+        <div class="filter-tabs">
+            <button class="filter-btn active" onclick="setFilter('All', this)">All</button>
+            <button class="filter-btn" onclick="setFilter('Pending', this)">Pending</button>
+            <button class="filter-btn" onclick="setFilter('Accepted', this)">Accepted</button>
+            <button class="filter-btn" onclick="setFilter('Declined', this)">Declined</button>
+        </div>
+
+        <div id="my-apps-list">
+            <p style="color: var(--text-secondary);">Loading your applications...</p>
+        </div>
+    </div>
+
+    <script>
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k",
+            authDomain: "eportfolio-8af75.firebaseapp.com",
+            projectId: "eportfolio-8af75"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let currentFilter = "All";
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                loadApplications(user.uid);
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+        function loadApplications(uid) {
+            // Real-time listener for the student's applications
+            db.collection("applications")
+                .where("studentId", "==", uid)
+                .onSnapshot((snapshot) => {
+                    renderList(snapshot);
+                }, (error) => {
+                    console.error("Error fetching applications:", error);
+                    document.getElementById('my-apps-list').innerHTML = `<p style="color: red;">Failed to load. Error: ${error.message}</p>`;
+                });
+        }
+        function renderList(snapshot) {
+            const list = document.getElementById('my-apps-list');
+            list.innerHTML = "";
+            if (snapshot.empty) {
+                list.innerHTML = `<p style="color: var(--text-secondary);">No applications found.</p>`;
+                return;
+            }
+            snapshot.forEach(doc => {
+                const app = doc.data();
+                // Apply UI Filtering
+                if (currentFilter !== "All" && app.status !== currentFilter) return;
+                // Determine Colors
+                let color = "var(--status-pending)";
+                if (app.status === "Accepted") color = "var(--status-accepted)";
+                if (app.status === "Declined") color = "var(--status-declined)";
+                const date = app.appliedAt ? new Date(app.appliedAt.seconds * 1000).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : "Recently";
+                list.innerHTML += `
+                    <div class="app-card">
+                        <div class="app-info">
+                            <div class="status-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
+                                ● ${app.status}
+                            </div>
+                            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 10px;">Applied on ${date}</span>
+                            <h3>${app.opportunityTitle}</h3>
+                            <div class="company-name">Posted by ${app.parentName || 'Community Member'}</div>
+                            <p class="quote">"${app.q1.substring(0, 100)}..."</p>
+                        </div>
+                    </div>`;
+            });
+            // If filter results in nothing
+            if (list.innerHTML === "") {
+                list.innerHTML = `<p style="color: var(--text-secondary);">No ${currentFilter} applications found.</p>`;
+            }
+        }
+        function setFilter(status, btn) {
+            currentFilter = status;
+            // UI Toggle
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // Re-render from existing local data (or trigger a refresh if needed)
+            const user = firebase.auth().currentUser;
+            if (user) loadApplications(user.uid);
+        }
+    </script>
+</body>
+
+</html>

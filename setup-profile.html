@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Profile</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background: #0b0f14;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: #111827;
+      padding: 40px;
+      width: 400px;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    h2 {
+      color: #facc15;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 12px;
+      color: #facc15;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      background: #0f172a;
+      color: white;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Complete Your Profile</h2>
+
+    <label>Full Name</label>
+    <input id="name" placeholder="Your full name">
+
+    <label>Role</label>
+    <select id="role" onchange="handleRoleChange()">
+      <option value="student">Student</option>
+      <option value="parent">Parent</option>
+    </select>
+
+    <label>School / Organization</label>
+    <input id="school" placeholder="School or organisation">
+
+    <label>Grade</label>
+    <select id="grade">
+      <option value="Grade 8 / Year 9">Grade 8 / Year 9</option>
+      <option value="Grade 9 / Year 10">Grade 9 / Year 10</option>
+      <option value="Grade 10 / Year 11">Grade 10 / Year 11</option>
+      <option value="Grade 11 / Year 12">Grade 11 / Year 12</option>
+      <option value="Grade 12 / Year 13">Grade 12 / Year 13</option>
+    </select>
+
+    <!-- Parent-only fields -->
+    <div id="parentFields" style="display:none;">
+      <label>Company Name</label>
+      <input id="companyName" placeholder="ABC Inc.">
+
+      <label>Company Sector</label>
+      <input id="companyDomain" placeholder="Technology">
+    </div>
+
+    <button type="button" onclick="save()">Finish Setup</button>
+  </div>
+
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyA90OItrHTEjBD13jm-yk2bo3ljKwLbe3k",
+    authDomain: "eportfolio-8af75.firebaseapp.com",
+    projectId: "eportfolio-8af75"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) window.location.href = "login.html";
+  });
+
+  function handleRoleChange() {
+    const role = document.getElementById("role").value;
+    document.getElementById("parentFields").style.display =
+      role === "parent" ? "block" : "none";
+  }
+
+  function save() {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+
+  // Explicitly fetch values (IMPORTANT)
+  const fullName = document.getElementById("name").value.trim();
+  const userRole = document.getElementById("role").value;
+  const userSchool = document.getElementById("school").value.trim();
+  const userGrade = document.getElementById("grade").value;
+
+  if (!fullName || !userSchool) {
+    alert("Please fill in all required fields.");
+    return;
+  }
+
+  const data = {
+    name: fullName,
+    role: userRole,
+    school: userSchool,
+    grade: userGrade,
+    email: user.email,
+    setupComplete: true
+  };
+
+  if (userRole === "parent") {
+    const companyName = document.getElementById("companyName").value.trim();
+    const companyDomain = document.getElementById("companyDomain").value.trim();
+
+    if (!companyName || !companyDomain) {
+      alert("Please complete company information.");
+      return;
+    }
+
+    data.companyName = companyName;
+    data.companyDomain = companyDomain;
+  }
+
+  db.collection("users").doc(user.uid).set(data)
+    .then(() => {
+      window.location.href = "index.html";
+    })
+    .catch(err => alert(err.message));
+}
+</script>
+</body>
+</html>
