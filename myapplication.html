@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Applications | PathFinder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f14; --card-bg: #111827; --border-color: #1f2937;
+      --text-primary: #ffffff; --text-secondary: #9ca3af; --accent-yellow: #facc15;
+      --status-pending: #facc15; --status-accepted: #10b981; --status-declined: #ef4444;
+    }
+    body { background-color: var(--bg-dark); color: var(--text-primary); font-family: 'Inter', sans-serif; margin: 0; padding: 40px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header { margin-bottom: 40px; }
+    .back-link { color: var(--text-secondary); text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 15px; }
+    .back-link:hover { color: var(--accent-yellow); }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .subtitle { color: var(--text-secondary); font-size: 16px; }
+    .filter-tabs { display: flex; gap: 12px; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+    .filter-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; font-family: inherit; font-size: 14px; }
+    .filter-btn.active { background: var(--card-bg); color: var(--text-primary); border-color: var(--accent-yellow); }
+    #my-apps-list { display: flex; flex-direction: column; gap: 16px; }
+    .app-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; display: flex; justify-content: space-between; align-items: flex-start; transition: transform 0.2s; }
+    .app-card:hover { border-color: #374151; }
+    .app-info { flex: 1; }
+    .app-info h3 { margin: 0 0 4px 0; font-size: 20px; }
+    .company-name { color: var(--accent-yellow); font-size: 14px; margin-bottom: 12px; }
+    .status-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .quote { font-style: italic; color: var(--text-secondary); font-size: 13px; border-left: 2px solid var(--border-color); padding-left: 10px; margin: 10px 0 0 0; line-height: 1.5; }
+    .date-text { color: var(--text-secondary); font-size: 12px; margin-left: 10px; }
+    .empty-state { color: var(--text-secondary); text-align: center; padding: 60px 20px; }
+    .error-state { color: #ef4444; text-align: center; padding: 40px 20px; }
+    @media (max-width: 768px) { body { padding: 20px; } .app-card { flex-direction: column; } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <a href="studentdashboard.html" class="back-link">← Back to Browse</a>
+      <h1>My Applications</h1>
+      <p class="subtitle">Track the status of your opportunity applications</p>
+    </header>
+
+    <div class="filter-tabs">
+      <button class="filter-btn active" onclick="setFilter('All', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('Pending', this)">Pending</button>
+      <button class="filter-btn" onclick="setFilter('Accepted', this)">Accepted</button>
+      <button class="filter-btn" onclick="setFilter('Declined', this)">Declined</button>
+    </div>
+
+    <div id="my-apps-list"><p class="empty-state">Loading your applications...</p></div>
+  </div>
+
+  <script>
+    let currentFilter = "All";
+    let applicationsSubscription = null;
+    let currentUser = null;
+
+    requireAuth(async (user, profile) => {
+      currentUser = user;
+      await loadApplications();
+
+      // Realtime updates
+      applicationsSubscription = db
+        .channel('my-apps-' + user.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+          filter: 'student_id=eq.' + user.id
+        }, () => {
+          loadApplications();
+        })
+        .subscribe();
+    });
+
+    async function loadApplications() {
+      const list = document.getElementById('my-apps-list');
+
+      let query = db
+        .from('applications')
+        .select('*')
+        .eq('student_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (currentFilter !== 'All') {
+        query = query.eq('status', currentFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching applications:", error);
+        list.innerHTML = `<p class="error-state">Failed to load your applications. Please try again.</p>`;
+        return;
+      }
+
+      renderList(data || []);
+    }
+
+    function renderList(apps) {
+      const list = document.getElementById('my-apps-list');
+      list.innerHTML = "";
+
+      if (apps.length === 0) {
+        list.innerHTML = `<p class="empty-state">No ${currentFilter === 'All' ? '' : currentFilter.toLowerCase() + ' '}applications found.</p>`;
+        return;
+      }
+
+      apps.forEach(app => {
+        let color = "var(--status-pending)";
+        if (app.status === "Accepted") color = "var(--status-accepted)";
+        if (app.status === "Declined") color = "var(--status-declined)";
+
+        const date = app.created_at ? formatDate(app.created_at) : "Recently";
+
+        const card = document.createElement('div');
+        card.className = 'app-card';
+
+        const info = document.createElement('div');
+        info.className = 'app-info';
+
+        const statusRow = document.createElement('div');
+        statusRow.style.marginBottom = '12px';
+
+        const badge = document.createElement('span');
+        badge.className = 'status-badge';
+        badge.style.background = color + '20';
+        badge.style.color = color;
+        badge.style.border = '1px solid ' + color + '40';
+        badge.textContent = '● ' + app.status;
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'date-text';
+        dateSpan.textContent = 'Applied on ' + date;
+
+        statusRow.appendChild(badge);
+        statusRow.appendChild(dateSpan);
+
+        const title = document.createElement('h3');
+        title.textContent = app.opportunity_title || 'Untitled Opportunity';
+
+        const company = document.createElement('div');
+        company.className = 'company-name';
+        company.textContent = 'Posted by ' + (app.parent_name || 'Community Member');
+
+        const quote = document.createElement('p');
+        quote.className = 'quote';
+        const q1Text = app.q1 || '';
+        quote.textContent = '"' + q1Text.substring(0, 100) + (q1Text.length > 100 ? '...' : '') + '"';
+
+        info.appendChild(statusRow);
+        info.appendChild(title);
+        info.appendChild(company);
+        info.appendChild(quote);
+
+        card.appendChild(info);
+        list.appendChild(card);
+      });
+    }
+
+    async function setFilter(status, btn) {
+      currentFilter = status;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      await loadApplications();
+    }
+  </script>
+</body>
+</html>

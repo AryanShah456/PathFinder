@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFinder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    body {
+      background: #0b0f14;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card { background: #111827; padding: 50px; border-radius: 16px; text-align: center; width: 420px; max-width: 90%; }
+    h1 { color: #facc15; margin-bottom: 10px; }
+    p { color: #9ca3af; font-size: 14px; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(250, 204, 21, 0.2);
+      border-radius: 50%;
+      border-top-color: #facc15;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Please be Patient</h1>
+    <p>Redirecting you to your dashboard...</p>
+    <div class="spinner"></div>
+  </div>
+
+<script>
+  async function redirect() {
+    const { data: { session } } = await auth.getSession();
+
+    if (!session) {
+      window.location.href = "login.html";
+      return;
+    }
+
+    const { data: profile, error } = await db
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error || !profile || !profile.setup_complete) {
+      window.location.href = "setup-profile.html";
+      return;
+    }
+
+    window.location.href = profile.role === "student" ? "studentdashboard.html" : "parentdashboard.html";
+  }
+
+  redirect().catch(err => {
+    console.error('Redirect error:', err);
+    document.querySelector('.card p').textContent = 'Error loading your profile. Please refresh to try again.';
+    document.querySelector('.spinner').style.display = 'none';
+  });
+</script>
+</body>
+</html>

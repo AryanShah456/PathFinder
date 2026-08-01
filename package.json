@@ -1,0 +1,11 @@
+{
+  "name": "pathfinder-supabase",
+  "version": "1.0.0",
+  "description": "PathFinder - Supabase edition (local dev server)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

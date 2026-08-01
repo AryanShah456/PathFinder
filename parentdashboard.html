@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFinder | Parent Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    :root { --bg: #0b0f14; --card: #111827; --accent: #facc15; --blue: #2563eb; --text-gray: #9ca3af; --border: #1f2937; }
+    body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; }
+    header { background: var(--card); padding: 0 60px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); height: 70px; }
+    .nav-links { display: flex; gap: 30px; }
+    .nav-item { cursor: pointer; color: #9ca3af; font-size: 14px; font-weight: 500; transition: 0.3s; padding: 10px 0; }
+    .nav-item:hover, .nav-item.active { color: var(--accent); }
+    .profile-trigger { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .avatar { width: 32px; height: 32px; background: var(--accent); border-radius: 50%; color: black; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
+
+    .main { padding: 40px 60px; max-width: 1200px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 12px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, textarea, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #1f2937; color: white; border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 14px; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    .publish-btn { background: var(--blue); color: white; border: none; padding: 14px 30px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; font-family: inherit; font-size: 14px; transition: 0.2s; }
+    .publish-btn:hover:not(:disabled) { opacity: 0.9; }
+    .publish-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 15px; min-height: 18px; }
+
+    .applicants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; margin-top: 20px; }
+    .applicant-card { background: var(--card); border: 1px solid var(--border); padding: 25px; border-radius: 16px; color: white; }
+    .applicant-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .applicant-header h3 { margin: 0; color: var(--accent); font-size: 18px; }
+    .grade-badge { font-size: 12px; background: #374151; padding: 4px 10px; border-radius: 4px; }
+    .applicant-opp { font-size: 14px; color: var(--text-gray); margin-bottom: 20px; }
+    .applicant-answers { background: var(--bg); padding: 15px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; line-height: 1.6; }
+    .applicant-answers p { margin: 0 0 10px 0; cursor: pointer; }
+    .applicant-answers p:last-child { margin-bottom: 0; }
+    .applicant-answers strong { color: var(--accent); }
+    .answer-preview { 
+      display: -webkit-box; 
+      -webkit-line-clamp: 3; 
+      -webkit-box-orient: vertical; 
+      overflow: hidden;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .answer-preview:hover { color: #d1d5db; }
+    .expand-hint { font-size: 11px; color: #6b7280; margin-top: 4px; text-align: center; }
+    .cv-link { text-align: center; color: #60a5fa; text-decoration: none; font-size: 14px; display: block; margin-bottom: 15px; }
+    .cv-link:hover { color: #93c5fd; }
+    .action-buttons { display: flex; gap: 10px; }
+    .btn-accept { flex: 1; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: inherit; font-size: 14px; }
+    .btn-decline { flex: 1; background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: inherit; font-size: 14px; }
+    .btn-accept:disabled, .btn-decline:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .empty-state { color: var(--text-gray); text-align: center; padding: 40px 20px; }
+    .error-state { color: #ef4444; text-align: center; padding: 40px 20px; }
+
+    /* Modal for expanded answers */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+    }
+    .modal-header h3 { margin: 0; color: var(--accent); font-size: 18px; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-gray);
+      font-size: 24px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { background: #374151; color: white; }
+    .modal-body { font-size: 14px; line-height: 1.7; color: #d1d5db; white-space: pre-wrap; }
+
+    .messaging-container { display: flex; height: 75vh; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .chat-sidebar { width: 320px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-title { padding: 20px; margin: 0; font-size: 18px; color: white; border-bottom: 1px solid var(--border); }
+    .search-box { padding: 15px; position: relative; }
+    .search-box input { width: 100%; background: #1f2937; border: 1px solid #374151; color: white; padding: 10px 15px; border-radius: 8px; font-family: inherit; }
+    .search-results-dropdown { position: absolute; top: 55px; left: 15px; width: calc(100% - 30px); background: #1f2937; border: 1px solid #374151; border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+    .search-result-item { padding: 10px; cursor: pointer; color: #d1d5db; border-bottom: 1px solid #374151; }
+    .search-result-item:hover { background: #374151; color: var(--accent); }
+    .conversation-list { flex-grow: 1; overflow-y: auto; }
+    .convo-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .convo-item:hover, .convo-item.active { background: #1f2937; }
+    .convo-item h4 { margin: 0; color: white; font-size: 14px; }
+    .convo-item p { margin: 2px 0 0; color: #9ca3af; font-size: 12px; }
+    .chat-main { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+    .chat-header { padding: 15px 25px; background: var(--card); border-bottom: 1px solid var(--border); display: none; align-items: center; }
+    .header-info { display: flex; align-items: center; gap: 15px; }
+    .header-info h3 { margin: 0; font-size: 16px; color: white; }
+    .status-text { color: #9ca3af; font-size: 12px; }
+    .empty-state-chat { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; }
+    .chat-messages { flex-grow: 1; padding: 25px; overflow-y: auto; display: none; flex-direction: column; gap: 12px; }
+    .msg-row { display: flex; width: 100%; }
+    .msg-bubble { max-width: 60%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+    .msg-row.received { justify-content: flex-start; }
+    .received .msg-bubble { background: #1f2937; color: #e5e7eb; border-top-left-radius: 2px; }
+    .msg-row.sent { justify-content: flex-end; }
+    .sent .msg-bubble { background: var(--accent); color: #111827; border-top-right-radius: 2px; font-weight: 500; }
+    .timestamp { font-size: 10px; margin-top: 5px; opacity: 0.7; text-align: right; display: block; }
+    .chat-input-area { padding: 20px; background: var(--card); border-top: 1px solid var(--border); display: none; align-items: center; gap: 10px; }
+    .chat-input-area input { flex-grow: 1; background: var(--bg); border: 1px solid #374151; color: white; padding: 12px 15px; border-radius: 8px; font-family: inherit; }
+    .send-btn { background: var(--accent); border: none; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; color: #111827; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .send-btn:hover { background: #eab308; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .avatar-small, .avatar-large { background: #374151; color: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .avatar-small { width: 35px; height: 35px; font-size: 14px; }
+    .avatar-large { width: 40px; height: 40px; font-size: 16px; }
+
+    @media (max-width: 768px) {
+      header { padding: 0 20px; }
+      .main { padding: 20px; }
+      .applicants-grid { grid-template-columns: 1fr; }
+      .messaging-container { flex-direction: column; height: 60vh; }
+      .chat-sidebar { width: 100%; height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Modal for expanded answers -->
+  <div class="modal-overlay" id="answerModal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalTitle">Full Answer</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <header>
+    <div style="font-weight: 700; color: var(--accent); font-size: 20px;">PathFinder</div>
+    <div class="nav-links">
+      <div class="nav-item active" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="nav-item" onclick="showTab('listing')">List Opportunity</div>
+      <div class="nav-item" onclick="showTab('applicants')">View Applicants</div>
+      <div class="nav-item" onclick="showTab('messages')">Messaging</div>
+    </div>
+    <div class="profile-trigger" onclick="showTab('profile')">
+      <span id="parent-name" style="font-size: 14px;">Parent</span>
+      <div class="avatar" id="parent-initial">P</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="dashboard" class="tab-content active">
+      <h1>Parent Dashboard</h1>
+      <p style="color: var(--text-gray);">Welcome to your overview. Use the tabs above to manage opportunities and applicants.</p>
+      <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">
+        <div style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+          <h3 style="margin: 0 0 10px; color: var(--accent);">Quick Actions</h3>
+          <p style="color: var(--text-gray); font-size: 14px; margin: 0;">Post a new opportunity or review pending applications.</p>
+        </div>
+        <div style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+          <h3 style="margin: 0 0 10px; color: var(--accent);">Tips</h3>
+          <p style="color: var(--text-gray); font-size: 14px; margin: 0;">Accepted applications automatically close your listing.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="listing" class="tab-content">
+      <h1>Post Opportunity</h1>
+      <div style="background:var(--card); padding:30px; border-radius:12px; border: 1px solid rgba(255,255,255,0.05); max-width: 700px; margin: 0 auto;">
+        <div class="error-message" id="listingError"></div>
+        <div class="form-group"><label for="oppTitle">Job Title</label><input type="text" id="oppTitle" maxlength="120" placeholder="e.g. Marketing Assistant"></div>
+        <div class="form-group"><label for="oppType">Type</label>
+          <select id="oppType"><option value="Internship">Internship</option><option value="Job Shadowing">Job Shadowing</option></select>
+          <p style="color: var(--text-gray); font-size: 12px; margin: 8px 0 0;">Internships are only visible to students from your own school. Job Shadowing is open to all students.</p>
+        </div>
+        <div class="form-group"><label for="oppDuration">Duration</label><input type="text" id="oppDuration" maxlength="60" placeholder="e.g. 2 weeks, 3 months, 1 day"></div>
+        <div class="form-group"><label for="oppLocation">Location</label><input type="text" id="oppLocation" maxlength="120" placeholder="e.g. Remote, London, New York"></div>
+        <div class="form-group"><label for="oppSpots">Number of Spots</label><input type="number" id="oppSpots" placeholder="1" min="1" max="50" value="1"></div>
+        <div class="form-group"><label for="oppReqs">Requirements</label><textarea id="oppReqs" maxlength="1000" rows="3" placeholder="e.g. Must have own laptop, basic Python knowledge, or Year 11+"></textarea></div>
+        <div class="form-group"><label for="oppDesc">Description</label><textarea id="oppDesc" maxlength="2000" rows="4" placeholder="What will the student be doing?"></textarea></div>
+        <button class="publish-btn" id="publishBtn" onclick="publishOpp()">Publish Opportunity</button>
+      </div>
+    </div>
+
+    <div id="applicants" class="tab-content">
+      <h2 style="color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 10px;">New Applicants</h2>
+      <div id="applicants-grid" class="applicants-grid"><p class="empty-state">Loading applicants...</p></div>
+    </div>
+
+    <div id="messages" class="tab-content">
+      <div class="messaging-container">
+        <div class="chat-sidebar">
+          <h2 class="sidebar-title">Conversations</h2>
+          <div class="search-box">
+            <input type="text" id="userSearch" placeholder="Search for users..." oninput="searchUsers()">
+            <div id="searchResults" class="search-results-dropdown"></div>
+          </div>
+          <div id="activeChatsList" class="conversation-list"><p style="padding:20px; color:#6b7280; font-size:13px; text-align:center;">Loading chats...</p></div>
+        </div>
+        <div class="chat-main">
+          <div id="chatHeader" class="chat-header">
+            <div class="header-info">
+              <div class="avatar-large" id="headerInitial">?</div>
+              <div><h3 id="headerName">Select a user</h3><span class="status-text">PathFinder Community</span></div>
+            </div>
+          </div>
+          <div id="emptyState" class="empty-state-chat"><h3>Select a conversation</h3><p>Choose a person from the left or search to start chatting.</p></div>
+          <div id="chatBox" class="chat-messages"></div>
+          <div id="inputArea" class="chat-input-area">
+            <input type="text" id="msgInput" maxlength="2000" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" class="send-btn" id="sendBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="profile" class="tab-content">
+      <h1>Your Profile</h1>
+      <p style="color: var(--text-gray); margin-bottom: 20px;">Manage your account settings.</p>
+      <div style="background:var(--card); padding:30px; border-radius:12px; border: 1px solid rgba(255,255,255,0.05); max-width: 500px;">
+        <div class="error-message" id="profileError"></div>
+        <div id="profileSuccess" style="color:#34d399; font-size:13px; margin-bottom:15px; min-height:18px;"></div>
+        <div class="form-group"><label for="profileSchool">School / Organization</label>
+          <select id="profileSchool"><option value="">Loading schools...</option></select>
+        </div>
+        <div class="form-group"><label for="profileCompanyName">Company Name</label><input type="text" id="profileCompanyName" maxlength="120"></div>
+        <div class="form-group"><label for="profileCompanyDomain">Company Sector</label><input type="text" id="profileCompanyDomain" maxlength="80"></div>
+        <button class="publish-btn" id="profileSaveBtn" onclick="saveParentProfile()">Save Changes</button>
+      </div>
+      <button onclick="logout()" style="margin-top: 20px; color:#f87171; background:none; border:1px solid #f87171; padding:10px 20px; border-radius:8px; cursor:pointer; font-family: inherit; font-size: 14px;">Logout</button>
+    </div>
+  </div>
+
+<script>
+  let activeChatId = null;
+  let currentUser = null;
+  let applicantsSubscription = null;
+  let messagesSubscription = null;
+  let searchDebounce = null;
+
+  requireAuth(async (user, profile) => {
+    currentUser = user;
+    if (profile) {
+      safeText('parent-name', profile.name);
+      const initialEl = document.getElementById('parent-initial');
+      if (initialEl && profile.name) initialEl.textContent = profile.name.charAt(0).toUpperCase();
+      await loadParentProfileForm(profile);
+    }
+    loadApplicants();
+    loadConversationList();
+  });
+
+  // ===================== PARENT PROFILE =====================
+  async function loadParentProfileForm(profile) {
+    const select = document.getElementById('profileSchool');
+    const { data, error } = await db.from('schools').select('name').order('name');
+
+    if (error || !data || data.length === 0) {
+      select.innerHTML = '<option value="">Unable to load schools</option>';
+    } else {
+      select.innerHTML = data.map(s => `<option value="${escapeHTML(s.name)}">${escapeHTML(s.name)}</option>`).join('');
+      if (profile.school) select.value = profile.school;
+    }
+
+    document.getElementById('profileCompanyName').value = profile.company_name || '';
+    document.getElementById('profileCompanyDomain').value = profile.company_domain || '';
+  }
+
+  async function saveParentProfile() {
+    const errorDiv = document.getElementById('profileError');
+    const successDiv = document.getElementById('profileSuccess');
+    const saveBtn = document.getElementById('profileSaveBtn');
+    errorDiv.textContent = '';
+    successDiv.textContent = '';
+
+    const school = document.getElementById('profileSchool').value;
+    const companyName = document.getElementById('profileCompanyName').value.trim();
+    const companyDomain = document.getElementById('profileCompanyDomain').value.trim();
+
+    if (!school || !companyName || !companyDomain) {
+      errorDiv.textContent = 'Please fill in all fields.';
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    const { error } = await db
+      .from('users')
+      .update({ school, company_name: companyName, company_domain: companyDomain })
+      .eq('id', currentUser.id);
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Changes';
+
+    if (error) {
+      console.error('Parent profile update error:', error);
+      errorDiv.textContent = 'Could not save your profile: ' + error.message;
+      return;
+    }
+    successDiv.textContent = 'Profile updated!';
+  }
+
+  function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(item => {
+      if (item.getAttribute('onclick').includes(tabId)) item.classList.add('active');
+    });
+  }
+
+  // ===================== MODAL =====================
+  function openModal(title, body) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').textContent = body;
+    document.getElementById('answerModal').classList.add('active');
+  }
+
+  function closeModal(event) {
+    if (!event || event.target.id === 'answerModal' || event.target.classList.contains('modal-close')) {
+      document.getElementById('answerModal').classList.remove('active');
+    }
+  }
+
+  // ===================== PUBLISH =====================
+  async function publishOpp() {
+    const errorDiv = document.getElementById('listingError');
+    errorDiv.textContent = '';
+
+    const title = document.getElementById('oppTitle').value.trim();
+    const type = document.getElementById('oppType').value;
+    const duration = document.getElementById('oppDuration').value.trim();
+    const location = document.getElementById('oppLocation').value.trim();
+    const spots = Math.min(50, Math.max(1, parseInt(document.getElementById('oppSpots').value) || 1));
+    const desc = document.getElementById('oppDesc').value.trim();
+    const reqs = document.getElementById('oppReqs').value.trim();
+    const publishBtn = document.getElementById('publishBtn');
+
+    if (!title || !duration) { errorDiv.textContent = "Please fill in title and duration"; return; }
+
+    publishBtn.disabled = true;
+    publishBtn.textContent = 'Publishing...';
+
+    const { data: profile } = await db
+      .from('users')
+      .select('name, school')
+      .eq('id', currentUser.id)
+      .single();
+
+    const { error } = await db
+      .from('opportunities')
+      .insert({
+        title, type, duration, location, spots,
+        description: desc, requirements: reqs,
+        posted_by: currentUser.id,
+        parent_name: profile?.name || 'Anonymous',
+        school: profile?.school || null,
+        listing_status: 'Open'
+      });
+
+    if (error) {
+      console.error('Publish error:', error);
+      errorDiv.textContent = 'Failed to publish: ' + error.message;
+    } else {
+      document.getElementById('oppTitle').value = '';
+      document.getElementById('oppDuration').value = '';
+      document.getElementById('oppLocation').value = '';
+      document.getElementById('oppSpots').value = '1';
+      document.getElementById('oppDesc').value = '';
+      document.getElementById('oppReqs').value = '';
+      publishBtn.textContent = '✓ Published!';
+      setTimeout(() => { publishBtn.textContent = 'Publish Opportunity'; }, 2000);
+    }
+    publishBtn.disabled = false;
+  }
+
+  // ===================== APPLICANTS =====================
+  async function loadApplicants() {
+    if (!currentUser) return;
+
+    // Realtime subscription for pending applications
+    applicantsSubscription = db
+      .channel('applicants-' + currentUser.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'applications',
+        filter: 'parent_id=eq.' + currentUser.id
+      }, () => {
+        fetchApplicants();
+      })
+      .subscribe();
+
+    await fetchApplicants();
+  }
+
+  async function fetchApplicants() {
+    const { data, error } = await db
+      .from('applications')
+      .select('*')
+      .eq('parent_id', currentUser.id)
+      .eq('status', 'Pending')
+      .order('created_at', { ascending: false });
+
+    const grid = document.getElementById('applicants-grid');
+
+    if (error) {
+      console.error('Applicants load error:', error);
+      grid.innerHTML = '<p class="error-state">Failed to load applicants.</p>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      grid.innerHTML = '<p class="empty-state">No pending applications.</p>';
+      return;
+    }
+
+    grid.innerHTML = '';
+
+    data.forEach(app => {
+      const card = document.createElement('div');
+      card.className = 'applicant-card';
+
+      const header = document.createElement('div');
+      header.className = 'applicant-header';
+      const name = document.createElement('h3');
+      name.textContent = app.student_name || 'Unknown Student';
+      const grade = document.createElement('span');
+      grade.className = 'grade-badge';
+      grade.textContent = app.student_grade || 'N/A';
+      header.appendChild(name);
+      header.appendChild(grade);
+
+      const opp = document.createElement('div');
+      opp.className = 'applicant-opp';
+      const oppLabel = document.createElement('strong');
+      oppLabel.textContent = 'Opportunity: ';
+      opp.appendChild(oppLabel);
+      opp.appendChild(document.createTextNode(app.opportunity_title || 'Untitled'));
+
+      const answers = document.createElement('div');
+      answers.className = 'applicant-answers';
+
+      // Q1 with expandable preview
+      const q1 = document.createElement('p');
+      const q1Label = document.createElement('strong');
+      q1Label.textContent = 'Deserve: ';
+      q1.appendChild(q1Label);
+      const q1Preview = document.createElement('span');
+      q1Preview.className = 'answer-preview';
+      q1Preview.textContent = app.q1 || 'No answer';
+      q1Preview.onclick = () => openModal('Why do they deserve this role?', app.q1 || 'No answer');
+      q1.appendChild(q1Preview);
+
+      // Q2 with expandable preview
+      const q2 = document.createElement('p');
+      const q2Label = document.createElement('strong');
+      q2Label.textContent = 'Interest: ';
+      q2.appendChild(q2Label);
+      const q2Preview = document.createElement('span');
+      q2Preview.className = 'answer-preview';
+      q2Preview.textContent = app.q2 || 'No answer';
+      q2Preview.onclick = () => openModal('Why are they interested?', app.q2 || 'No answer');
+      q2.appendChild(q2Preview);
+
+      const expandHint = document.createElement('div');
+      expandHint.className = 'expand-hint';
+      expandHint.textContent = '👆 Click any answer to expand';
+
+      answers.appendChild(q1);
+      answers.appendChild(q2);
+      answers.appendChild(expandHint);
+
+      // CV Link
+      const cvLink = document.createElement('a');
+      cvLink.className = 'cv-link';
+      cvLink.href = app.cv_url || '#';
+      cvLink.target = '_blank';
+      cvLink.rel = 'noopener noreferrer';
+      cvLink.textContent = '🔗 View Student CV';
+      if (!app.cv_url) {
+        cvLink.style.pointerEvents = 'none';
+        cvLink.style.opacity = '0.5';
+        cvLink.textContent = '❌ No CV attached';
+      }
+
+      const buttons = document.createElement('div');
+      buttons.className = 'action-buttons';
+      const acceptBtn = document.createElement('button');
+      acceptBtn.className = 'btn-accept';
+      acceptBtn.textContent = 'Accept';
+      acceptBtn.onclick = () => updateAppStatus(app.id, 'Accepted', app.opportunity_id, app.cv_path, acceptBtn, declineBtn);
+      const declineBtn = document.createElement('button');
+      declineBtn.className = 'btn-decline';
+      declineBtn.textContent = 'Decline';
+      declineBtn.onclick = () => updateAppStatus(app.id, 'Declined', app.opportunity_id, app.cv_path, acceptBtn, declineBtn);
+      buttons.appendChild(acceptBtn);
+      buttons.appendChild(declineBtn);
+
+      card.appendChild(header);
+      card.appendChild(opp);
+      card.appendChild(answers);
+      card.appendChild(cvLink);
+      card.appendChild(buttons);
+      grid.appendChild(card);
+    });
+  }
+
+  async function updateAppStatus(appId, newStatus, oppId, cvPath, acceptBtn, declineBtn) {
+    acceptBtn.disabled = true;
+    declineBtn.disabled = true;
+
+    // 1. Update application status
+    const { error: appError } = await db
+      .from('applications')
+      .update({ status: newStatus })
+      .eq('id', appId);
+
+    if (appError) {
+      console.error("Error:", appError);
+      alert("Failed to update: " + appError.message);
+      acceptBtn.disabled = false;
+      declineBtn.disabled = false;
+      return;
+    }
+
+    // 2. If accepted, close the opportunity
+    if (newStatus === "Accepted" && oppId) {
+      await db
+        .from('opportunities')
+        .update({ listing_status: 'Closed' })
+        .eq('id', oppId);
+    }
+
+    // 3. DELETE CV from storage to free up space
+    if (cvPath) {
+      await deleteCV(cvPath);
+      console.log('CV deleted from storage:', cvPath);
+    }
+
+    // Refresh the list
+    await fetchApplicants();
+  }
+
+  // ===================== MESSAGING =====================
+  async function loadConversationList() {
+    const myUid = currentUser.id;
+    const listDiv = document.getElementById('activeChatsList');
+
+    const { data, error } = await db
+      .from('messages')
+      .select('sender_id, receiver_id, text, created_at')
+      .or('sender_id.eq.' + myUid + ',receiver_id.eq.' + myUid)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) {
+      console.error('Conversation load error:', error);
+      listDiv.innerHTML = '<p style="padding:20px; color:#ef4444; font-size:13px; text-align:center;">Failed to load conversations.</p>';
+      return;
+    }
+
+    const partners = new Map();
+    (data || []).forEach(m => {
+      const partnerId = m.sender_id === myUid ? m.receiver_id : m.sender_id;
+      if (!partners.has(partnerId)) {
+        partners.set(partnerId, { text: m.text, created_at: m.created_at });
+      }
+    });
+
+    if (partners.size === 0) {
+      listDiv.innerHTML = '<p style="padding:20px; color:#6b7280; font-size:13px; text-align:center;">No conversations yet.</p>';
+      return;
+    }
+
+    const ids = Array.from(partners.keys());
+    const { data: users } = await db
+      .from('users')
+      .select('id, name, role')
+      .in('id', ids);
+
+    listDiv.innerHTML = '';
+    (users || []).forEach(u => {
+      const initial = (u.name || '?').charAt(0).toUpperCase();
+      const item = document.createElement('div');
+      item.className = 'convo-item';
+      item.id = `user-row-${u.id}`;
+      item.onclick = () => openChat(u.id, u.name);
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar-small';
+      avatar.textContent = initial;
+      const info = document.createElement('div');
+      const nameEl = document.createElement('h4');
+      nameEl.textContent = u.name || 'Unknown';
+      const roleEl = document.createElement('p');
+      roleEl.textContent = u.role || '';
+      info.appendChild(nameEl);
+      info.appendChild(roleEl);
+      item.appendChild(avatar);
+      item.appendChild(info);
+      listDiv.appendChild(item);
+    });
+  }
+
+  function searchUsers() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(runSearch, 250);
+  }
+
+  async function runSearch() {
+    const query = normalizeSearchKey(document.getElementById('userSearch').value);
+    const drop = document.getElementById('searchResults');
+    if (query.length < 2) { drop.style.display = 'none'; drop.innerHTML=''; return; }
+
+    const { data, error } = await db
+      .from('users')
+      .select('id, name, role')
+      .ilike('name_lower', query + '%')
+      .limit(15);
+
+    if (error) { console.error('Search error:', error); return; }
+
+    drop.innerHTML = '';
+    let found = false;
+    (data || []).forEach(u => {
+      if (u.id === currentUser.id) return;
+      found = true;
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.onclick = () => openChat(u.id, u.name);
+      div.textContent = u.name;
+      drop.appendChild(div);
+    });
+    drop.style.display = found ? 'block' : 'none';
+  }
+
+  async function openChat(partnerId, partnerName) {
+    activeChatId = partnerId;
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('chatHeader').style.display = 'flex';
+    document.getElementById('chatBox').style.display = 'flex';
+    document.getElementById('inputArea').style.display = 'flex';
+    safeText('headerName', partnerName);
+    document.getElementById('headerInitial').textContent = partnerName.charAt(0).toUpperCase();
+
+    // Unsubscribe from previous
+    if (messagesSubscription) {
+      messagesSubscription.unsubscribe();
+    }
+
+    // Load initial messages
+    await loadMessages();
+
+    // Subscribe to new messages
+    messagesSubscription = db
+      .channel('messages-' + partnerId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        const m = payload.new;
+        if ((m.sender_id === currentUser.id && m.receiver_id === partnerId) ||
+            (m.sender_id === partnerId && m.receiver_id === currentUser.id)) {
+          appendMessage(m);
+        }
+      })
+      .subscribe();
+  }
+
+  async function loadMessages() {
+    const myUid = currentUser.id;
+    const chatBox = document.getElementById('chatBox');
+    chatBox.innerHTML = '';
+
+    const { data, error } = await db
+      .from('messages')
+      .select('*')
+      .or(
+        'and(sender_id.eq.' + myUid + ',receiver_id.eq.' + activeChatId + '),' +
+        'and(sender_id.eq.' + activeChatId + ',receiver_id.eq.' + myUid + ')'
+      )
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (error) {
+      console.error('Message load error:', error);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      chatBox.innerHTML = '<p style="color:#6b7280; text-align:center; margin-top:20px;">No messages yet.</p>';
+      return;
+    }
+
+    data.forEach(m => appendMessage(m));
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function appendMessage(m) {
+    const chatBox = document.getElementById('chatBox');
+    const isMine = m.sender_id === currentUser.id;
+
+    const row = document.createElement('div');
+    row.className = `msg-row ${isMine ? 'sent' : 'received'}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    const text = document.createElement('div');
+    text.textContent = m.text;
+    const time = document.createElement('span');
+    time.className = 'timestamp';
+    time.textContent = formatTime(m.created_at);
+    bubble.appendChild(text);
+    bubble.appendChild(time);
+    row.appendChild(bubble);
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+  async function sendMessage() {
+    const sendBtn = document.getElementById('sendBtn');
+    const text = document.getElementById('msgInput').value.trim();
+    if (!text || !activeChatId) return;
+
+    sendBtn.disabled = true;
+
+    const { error } = await db
+      .from('messages')
+      .insert({
+        text: text,
+        sender_id: currentUser.id,
+        receiver_id: activeChatId
+      });
+
+    if (error) {
+      console.error('Send error:', error);
+    } else {
+      document.getElementById('msgInput').value = '';
+      loadConversationList();
+    }
+    sendBtn.disabled = false;
+  }
+
+  async function logout() {
+    await auth.signOut();
+    window.location.href = 'login.html';
+  }
+</script>
+</body>
+</html>

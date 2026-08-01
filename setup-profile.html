@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Profile</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background: #0b0f14;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #111827;
+      padding: 40px;
+      width: 400px;
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    h2 { color: #facc15; margin-bottom: 20px; }
+
+    label {
+      font-size: 12px;
+      color: #facc15;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      background: #0f172a;
+      color: white;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    button:hover:not(:disabled) { box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 15px; min-height: 18px; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Complete Your Profile</h2>
+
+    <div class="error-message" id="formError"></div>
+
+    <label for="name">Full Name</label>
+    <input id="name" placeholder="Your full name" maxlength="80">
+
+    <label for="role">Role</label>
+    <select id="role" onchange="handleRoleChange()">
+      <option value="student">Student</option>
+      <option value="parent">Parent</option>
+    </select>
+
+    <label for="school">School / Organization</label>
+    <select id="school">
+      <option value="">Loading schools...</option>
+    </select>
+
+    <div id="gradeField">
+      <label for="grade">Grade</label>
+      <select id="grade">
+        <option value="Grade 8 / Year 9">Grade 8 / Year 9</option>
+        <option value="Grade 9 / Year 10">Grade 9 / Year 10</option>
+        <option value="Grade 10 / Year 11">Grade 10 / Year 11</option>
+        <option value="Grade 11 / Year 12">Grade 11 / Year 12</option>
+        <option value="Grade 12 / Year 13">Grade 12 / Year 13</option>
+      </select>
+    </div>
+
+    <div id="parentFields" style="display:none;">
+      <label for="companyName">Company Name</label>
+      <input id="companyName" placeholder="ABC Inc." maxlength="120">
+
+      <label for="companyDomain">Company Sector</label>
+      <input id="companyDomain" placeholder="Technology" maxlength="80">
+    </div>
+
+    <button type="button" id="saveBtn" onclick="save()">Finish Setup</button>
+  </div>
+
+  <script>
+    requireAuth(() => { /* profile setup itself is allowed pre-completion */ }, true);
+
+    async function loadSchools() {
+      const select = document.getElementById('school');
+      const { data, error } = await db.from('schools').select('name').order('name');
+
+      if (error || !data || data.length === 0) {
+        console.error('Schools load error:', error);
+        select.innerHTML = '<option value="">Unable to load schools</option>';
+        return;
+      }
+
+      select.innerHTML = '<option value="">Select your school...</option>' +
+        data.map(s => `<option value="${escapeHTML(s.name)}">${escapeHTML(s.name)}</option>`).join('');
+    }
+    loadSchools();
+
+    function handleRoleChange() {
+      const role = document.getElementById("role").value;
+      document.getElementById("parentFields").style.display = role === "parent" ? "block" : "none";
+      // Students report a grade; parents don't, so hide that question for parents.
+      document.getElementById("gradeField").style.display = role === "parent" ? "none" : "block";
+    }
+
+    async function save() {
+      const { data: { session } } = await auth.getSession();
+      const user = session.user;
+      if (!user) return;
+
+      const errorDiv = document.getElementById('formError');
+      errorDiv.textContent = '';
+
+      const fullName = document.getElementById("name").value.trim();
+      const userRole = document.getElementById("role").value;
+      const userSchool = document.getElementById("school").value.trim();
+      const userGrade = document.getElementById("grade").value;
+      const saveBtn = document.getElementById('saveBtn');
+
+      if (!fullName || !userSchool) {
+        errorDiv.textContent = "Please fill in all required fields.";
+        return;
+      }
+      if (fullName.length > 80 || userSchool.length > 120) {
+        errorDiv.textContent = "Name or school text is too long.";
+        return;
+      }
+
+      const data = {
+        id: user.id,
+        name: fullName,
+        name_lower: fullName.toLowerCase(),
+        role: userRole,
+        school: userSchool,
+        grade: userRole === "student" ? userGrade : null,
+        email: user.email,
+        email_verified: user.email_confirmed_at ? true : false,
+        setup_complete: true,
+        created_at: new Date().toISOString()
+      };
+
+      if (userRole === "parent") {
+        const companyName = document.getElementById("companyName").value.trim();
+        const companyDomain = document.getElementById("companyDomain").value.trim();
+
+        if (!companyName || !companyDomain) {
+          errorDiv.textContent = "Please complete company information.";
+          return;
+        }
+
+        data.company_name = companyName;
+        data.company_domain = companyDomain;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      const { error } = await db
+        .from('users')
+        .upsert(data, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Save error:', error);
+        errorDiv.textContent = 'Could not save your profile: ' + error.message;
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Finish Setup';
+        return;
+      }
+
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>

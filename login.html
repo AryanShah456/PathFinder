@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFinder | Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255, 200, 80, 0.15), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(255, 170, 0, 0.12), transparent 45%),
+        #0b0f14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      color: white;
+    }
+
+    .login-card {
+      background: #111827;
+      padding: 40px;
+      width: 360px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 200, 80, 0.15);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    h1 { font-size: 24px; margin-bottom: 8px; color: #facc15; }
+    p.subtitle { font-size: 14px; color: #9ca3af; margin-bottom: 25px; }
+
+    .form-group { margin-bottom: 15px; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #0f172a;
+      color: white;
+      font-family: inherit;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: 0.2s;
+    }
+    input:focus { outline: none; border-color: #facc15; }
+    input.error { border-color: #ef4444; }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+
+    .login-btn {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+    }
+    .login-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .signup-btn {
+      background: #1f2937;
+      color: #e5e7eb;
+    }
+    .signup-btn:hover:not(:disabled) { background: #374151; }
+    .signup-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .password-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    .password-toggle input[type="checkbox"] {
+      width: auto;
+      accent-color: #facc15;
+      cursor: pointer;
+    }
+
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 12px;
+      color: #60a5fa;
+      cursor: pointer;
+      margin-bottom: 20px;
+      text-decoration: none;
+    }
+    .forgot-link:hover { color: #93c5fd; }
+
+    .error-message {
+      color: #f87171;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 15px;
+      min-height: 20px;
+    }
+    .info-message {
+      color: #34d399;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 15px;
+      min-height: 20px;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+
+<body>
+  <div class="login-card">
+    <h1>Welcome to PathFinder</h1>
+    <p class="subtitle">Sign in or create an account</p>
+
+    <div class="form-group">
+      <input type="email" id="email" placeholder="Email" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+    </div>
+
+    <label class="password-toggle">
+      <input type="checkbox" id="showPassword" onchange="togglePassword()"> Show password
+    </label>
+
+    <a class="forgot-link" onclick="resetPassword()">Forgot password?</a>
+
+    <div class="error-message" id="error"></div>
+    <div class="info-message" id="info"></div>
+
+    <button class="login-btn" id="loginBtn" onclick="login()">Login</button>
+    <button class="signup-btn" id="signupBtn" onclick="signup()">Create Account</button>
+  </div>
+
+<script>
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const errorDiv = document.getElementById('error');
+  const infoDiv = document.getElementById('info');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+
+  // If already logged in, redirect
+  auth.getSession().then(({ data: { session } }) => {
+    if (session) window.location.href = "index.html";
+  });
+
+  function setLoading(isLoading, button) {
+    if (isLoading) {
+      button.disabled = true;
+      button.innerHTML = '<span class="loading-spinner"></span> Please wait...';
+    } else {
+      button.disabled = false;
+      button.innerHTML = button.id === 'loginBtn' ? 'Login' : 'Create Account';
+    }
+  }
+
+  function showError(message) {
+    infoDiv.textContent = '';
+    errorDiv.textContent = message;
+    emailInput.classList.toggle('error', /email|user/i.test(message));
+    passwordInput.classList.toggle('error', /password/i.test(message));
+  }
+
+  function showInfo(message) {
+    errorDiv.textContent = '';
+    infoDiv.textContent = message;
+  }
+
+  function clearMessages() {
+    errorDiv.textContent = '';
+    infoDiv.textContent = '';
+    emailInput.classList.remove('error');
+    passwordInput.classList.remove('error');
+  }
+
+  function validateInputs() {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email) return 'Please enter your email.';
+    if (!password) return 'Please enter your password.';
+    if (password.length < 6) return 'Password must be at least 6 characters.';
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return 'Please enter a valid email address.';
+
+    return null;
+  }
+
+  async function login() {
+    clearMessages();
+
+    const validationError = validateInputs();
+    if (validationError) { showError(validationError); return; }
+
+    setLoading(true, loginBtn);
+
+    const { data, error } = await auth.signInWithPassword({
+      email: emailInput.value.trim(),
+      password: passwordInput.value
+    });
+
+    if (error) {
+      let message = 'Something went wrong. Please try again.';
+      if (error.message.includes('Invalid login')) message = 'Invalid email or password.';
+      if (error.message.includes('Email not confirmed')) message = 'Please confirm your email first.';
+      showError(message);
+      setLoading(false, loginBtn);
+      return;
+    }
+
+    // Check profile setup
+    const { data: profile } = await db
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (!profile || !profile.setup_complete) {
+      window.location.href = "setup-profile.html";
+    } else {
+      window.location.href = "index.html";
+    }
+    setLoading(false, loginBtn);
+  }
+
+  async function signup() {
+    clearMessages();
+
+    const validationError = validateInputs();
+    if (validationError) { showError(validationError); return; }
+
+    setLoading(true, signupBtn);
+
+    const { data, error } = await auth.signUp({
+      email: emailInput.value.trim(),
+      password: passwordInput.value
+    });
+
+    if (error) {
+      let message = 'Something went wrong. Please try again.';
+      if (error.message.includes('already registered')) message = 'An account already exists with this email.';
+      if (error.message.includes('weak')) message = 'Password is too weak. Use at least 6 characters.';
+      showError(message);
+      setLoading(false, signupBtn);
+      return;
+    }
+
+    if (data.session) {
+      // Email confirmation is OFF in this project's Auth settings, so
+      // signUp already returned a live session — safe to continue straight
+      // into profile setup.
+      showInfo('Account created!');
+      setTimeout(() => {
+        window.location.href = "setup-profile.html";
+      }, 800);
+    } else {
+      // No session means email confirmation is ON: the user isn't logged in
+      // yet, so sending them to setup-profile.html would just bounce them
+      // back to login via requireAuth(). Keep them here until they confirm.
+      showInfo('Account created! Check your email for a confirmation link, then log in below.');
+      passwordInput.value = '';
+    }
+    setLoading(false, signupBtn);
+  }
+
+  async function resetPassword() {
+    clearMessages();
+    const email = emailInput.value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showError('Enter your email above first, then click "Forgot password?"');
+      return;
+    }
+
+    const { error } = await auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset-password.html'
+    });
+    if (error) {
+      showError('Could not send reset email. Please check the address and try again.');
+    } else {
+      showInfo('Password reset email sent. Check your inbox.');
+    }
+  }
+
+  function togglePassword() {
+    const isChecked = document.getElementById('showPassword').checked;
+    passwordInput.type = isChecked ? 'text' : 'password';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') login();
+  });
+</script>
+</body>
+</html>

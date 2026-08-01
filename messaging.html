@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFinder | Messaging</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f14;
+      --card-bg: #111827;
+      --border-color: #1f2937;
+      --text-gray: #9ca3af;
+      --accent-yellow: #facc15;
+    }
+    * { box-sizing: border-box; }
+    body { background-color: var(--bg-dark); color: white; font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 60px; background: rgba(17, 24, 39, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+    .logo-icon { background: var(--accent-yellow); color: black; padding: 5px; border-radius: 6px; }
+    .nav-links { display: flex; gap: 30px; font-size: 14px; }
+    .nav-links a { color: var(--text-gray); text-decoration: none; transition: 0.3s; }
+    .nav-links a:hover, .nav-links a.active { color: white; }
+    .profile-area { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+    .logout-btn { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    .logout-btn:hover { background: #ef4444; color: white; }
+
+    .messaging-container { display: flex; height: calc(100vh - 70px); margin: 0 60px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; }
+    .chat-sidebar { width: 320px; background: var(--card-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
+    .sidebar-title { padding: 20px; margin: 0; font-size: 18px; color: white; border-bottom: 1px solid var(--border-color); }
+    .search-box { padding: 15px; position: relative; }
+    .search-box input { width: 100%; background: #1f2937; border: 1px solid #374151; color: white; padding: 10px 15px; border-radius: 8px; font-family: inherit; }
+    .search-results-dropdown { position: absolute; top: 55px; left: 15px; width: calc(100% - 30px); background: #1f2937; border: 1px solid #374151; border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+    .search-result-item { padding: 12px; cursor: pointer; color: #d1d5db; border-bottom: 1px solid #374151; font-size: 14px; }
+    .search-result-item:hover { background: #374151; color: var(--accent-yellow); }
+
+    .conversation-list { flex-grow: 1; overflow-y: auto; }
+    .convo-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .convo-item:hover, .convo-item.active { background: #1f2937; }
+    .convo-item h4 { margin: 0; color: white; font-size: 14px; }
+    .convo-item p { margin: 4px 0 0; color: #9ca3af; font-size: 12px; }
+
+    .chat-main { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg-dark); position: relative; }
+    .chat-header { padding: 15px 25px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: none; align-items: center; }
+    .header-info { display: flex; align-items: center; gap: 15px; }
+    .header-info h3 { margin: 0; font-size: 16px; color: white; }
+    .status-text { color: #9ca3af; font-size: 12px; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; }
+
+    .chat-messages { flex-grow: 1; padding: 25px; overflow-y: auto; display: none; flex-direction: column; gap: 12px; }
+
+    .msg-row { display: flex; width: 100%; }
+    .msg-bubble { max-width: 60%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+    .msg-row.received { justify-content: flex-start; }
+    .received .msg-bubble { background: #1f2937; color: #e5e7eb; border-top-left-radius: 2px; }
+    .msg-row.sent { justify-content: flex-end; }
+    .sent .msg-bubble { background: var(--accent-yellow); color: #111827; border-top-right-radius: 2px; font-weight: 500; }
+    .timestamp { font-size: 10px; margin-top: 6px; opacity: 0.7; display: block; }
+
+    .chat-input-area { padding: 20px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: none; align-items: center; gap: 10px; }
+    .chat-input-area input { flex-grow: 1; background: #0b0f14; border: 1px solid #374151; color: white; padding: 12px 15px; border-radius: 8px; font-family: inherit; font-size: 14px; }
+    .send-btn { background: var(--accent-yellow); border: none; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; color: #111827; display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; }
+    .send-btn:hover { background: #eab308; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .avatar-small, .avatar-large { background: #374151; color: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+    .avatar-small { width: 36px; height: 36px; font-size: 14px; }
+    .avatar-large { width: 40px; height: 40px; font-size: 16px; }
+
+    .loading-text { padding: 20px; color: #6b7280; font-size: 13px; text-align: center; }
+    .hint-text { padding: 0 15px 15px; color: #6b7280; font-size: 11px; }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo"><div class="logo-icon">🎓</div> PathFinder</div>
+    <div class="nav-links">
+      <a href="studentdashboard.html">Browse</a>
+      <a href="myapplication.html">My Applications</a>
+      <a href="messaging.html" class="active">Messages</a>
+      <a href="studentprofile.html">Profile</a>
+    </div>
+    <div class="profile-area">
+      <span id="user-name-display">Loading...</span>
+      <div class="avatar" id="user-initial">?</div>
+    </div>
+  </nav>
+
+  <div class="messaging-container">
+    <div class="chat-sidebar">
+      <h2 class="sidebar-title">Conversations</h2>
+      <div class="search-box">
+        <input type="text" id="userSearch" placeholder="Search for users..." oninput="searchUsers()">
+        <div id="searchResults" class="search-results-dropdown"></div>
+      </div>
+      <p class="hint-text">Tip: search matches from the start of a person's name.</p>
+      <div id="activeChatsList" class="conversation-list">
+        <p class="loading-text">Loading chats...</p>
+      </div>
+    </div>
+
+    <div class="chat-main">
+      <div id="chatHeader" class="chat-header">
+        <div class="header-info">
+          <div class="avatar-large" id="headerInitial">?</div>
+          <div>
+            <h3 id="headerName">Select a user</h3>
+            <span class="status-text">PathFinder Community</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <h3>Select a conversation</h3>
+        <p>Choose a person from the left or search to start chatting.</p>
+      </div>
+
+      <div id="chatBox" class="chat-messages"></div>
+
+      <div id="inputArea" class="chat-input-area">
+        <input type="text" id="msgInput" placeholder="Type a message..." maxlength="2000" onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()" class="send-btn" id="sendBtn" aria-label="Send message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeChatId = null;
+    let currentUser = null;
+    let messagesSubscription = null;
+    let searchDebounce = null;
+
+    requireAuth(async (user, profile) => {
+      currentUser = user;
+      if (profile) {
+        safeText('user-name-display', profile.name);
+        const initialEl = document.getElementById('user-initial');
+        if (initialEl && profile.name) initialEl.textContent = profile.name.charAt(0).toUpperCase();
+      }
+      await loadConversationList();
+    });
+
+    async function loadConversationList() {
+      const myUid = currentUser.id;
+      const listDiv = document.getElementById('activeChatsList');
+      listDiv.innerHTML = '<p class="loading-text">Loading chats...</p>';
+
+      const { data, error } = await db
+        .from('messages')
+        .select('sender_id, receiver_id, text, created_at')
+        .or('sender_id.eq.' + myUid + ',receiver_id.eq.' + myUid)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Conversation load error:', error);
+        listDiv.innerHTML = '<p class="loading-text" style="color:#ef4444;">Failed to load conversations.</p>';
+        return;
+      }
+
+      const partners = new Map();
+      (data || []).forEach(m => {
+        const partnerId = m.sender_id === myUid ? m.receiver_id : m.sender_id;
+        if (!partners.has(partnerId)) {
+          partners.set(partnerId, { text: m.text, created_at: m.created_at });
+        }
+      });
+
+      if (partners.size === 0) {
+        listDiv.innerHTML = '<p class="loading-text">No conversations yet. Search for a user to start chatting!</p>';
+        return;
+      }
+
+      const ids = Array.from(partners.keys());
+      const { data: users } = await db
+        .from('users')
+        .select('id, name, role')
+        .in('id', ids);
+
+      listDiv.innerHTML = '';
+      (users || []).forEach(u => {
+        const initial = (u.name || '?').charAt(0).toUpperCase();
+
+        const item = document.createElement('div');
+        item.className = 'convo-item';
+        item.id = `user-row-${u.id}`;
+        item.onclick = () => openChat(u.id, u.name);
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar-small';
+        avatar.textContent = initial;
+
+        const info = document.createElement('div');
+        const nameEl = document.createElement('h4');
+        nameEl.textContent = u.name || 'Unknown';
+        const roleEl = document.createElement('p');
+        roleEl.textContent = u.role || '';
+
+        info.appendChild(nameEl);
+        info.appendChild(roleEl);
+        item.appendChild(avatar);
+        item.appendChild(info);
+        listDiv.appendChild(item);
+      });
+    }
+
+    function searchUsers() {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(runSearch, 250);
+    }
+
+    async function runSearch() {
+      const query = normalizeSearchKey(document.getElementById('userSearch').value);
+      const drop = document.getElementById('searchResults');
+
+      if (query.length < 2) {
+        drop.style.display = 'none';
+        drop.innerHTML = '';
+        return;
+      }
+
+      const { data, error } = await db
+        .from('users')
+        .select('id, name, role')
+        .ilike('name_lower', query + '%')
+        .limit(15);
+
+      if (error) {
+        console.error('Search error:', error);
+        drop.style.display = 'none';
+        return;
+      }
+
+      drop.innerHTML = '';
+      let found = false;
+
+      (data || []).forEach(u => {
+        if (u.id === currentUser.id) return;
+        found = true;
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        div.onclick = () => openChat(u.id, u.name);
+        div.textContent = `${u.name} (${u.role || 'user'})`;
+        drop.appendChild(div);
+      });
+
+      drop.style.display = found ? 'block' : 'none';
+    }
+
+    async function openChat(partnerId, partnerName) {
+      activeChatId = partnerId;
+
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('userSearch').value = '';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('chatHeader').style.display = 'flex';
+      document.getElementById('chatBox').style.display = 'flex';
+      document.getElementById('inputArea').style.display = 'flex';
+
+      safeText('headerName', partnerName);
+      const headerInitial = document.getElementById('headerInitial');
+      if (headerInitial) headerInitial.textContent = partnerName.charAt(0).toUpperCase();
+
+      document.querySelectorAll('.convo-item').forEach(el => el.classList.remove('active'));
+      const activeRow = document.getElementById(`user-row-${partnerId}`);
+      if (activeRow) activeRow.classList.add('active');
+
+      // Unsubscribe previous
+      if (messagesSubscription) {
+        messagesSubscription.unsubscribe();
+      }
+
+      await loadMessages();
+
+      // Subscribe to new messages
+      messagesSubscription = db
+        .channel('messages-' + partnerId)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        }, (payload) => {
+          const m = payload.new;
+          // Skip our own messages here — sendMessage() already appends them
+          // locally the instant they're sent, so re-appending via realtime
+          // would show every sent message twice.
+          if (m.sender_id === currentUser.id) return;
+          if (m.sender_id === partnerId && m.receiver_id === currentUser.id) {
+            appendMessage(m);
+          }
+        })
+        .subscribe();
+    }
+
+    async function loadMessages() {
+      const myUid = currentUser.id;
+      const chatBox = document.getElementById('chatBox');
+      chatBox.innerHTML = '';
+
+      const { data, error } = await db
+        .from('messages')
+        .select('*')
+        .or(
+          'and(sender_id.eq.' + myUid + ',receiver_id.eq.' + activeChatId + '),' +
+          'and(sender_id.eq.' + activeChatId + ',receiver_id.eq.' + myUid + ')'
+        )
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.error('Message load error:', error);
+        chatBox.innerHTML = '<p style="color:#ef4444; text-align:center; margin-top:20px;">Failed to load messages.</p>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        chatBox.innerHTML = '<p style="color:#6b7280; text-align:center; margin-top:20px;">No messages yet. Say hello!</p>';
+        return;
+      }
+
+      data.forEach(m => appendMessage(m));
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendMessage(m) {
+      const chatBox = document.getElementById('chatBox');
+      const isMine = m.sender_id === currentUser.id;
+      const timeStr = formatTime(m.created_at);
+
+      const row = document.createElement('div');
+      row.className = `msg-row ${isMine ? 'sent' : 'received'}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+
+      const textNode = document.createElement('div');
+      textNode.textContent = m.text;
+
+      const timeNode = document.createElement('span');
+      timeNode.className = 'timestamp';
+      timeNode.textContent = timeStr;
+
+      bubble.appendChild(textNode);
+      bubble.appendChild(timeNode);
+      row.appendChild(bubble);
+      chatBox.appendChild(row);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+    async function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const text = input.value.trim();
+      if (!text || !activeChatId || !currentUser) return;
+      if (text.length > 2000) { alert('Message is too long.'); return; }
+
+      sendBtn.disabled = true;
+
+      const { data, error } = await db
+        .from('messages')
+        .insert({
+          text: text,
+          sender_id: currentUser.id,
+          receiver_id: activeChatId
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Send error:', error);
+        alert('Failed to send message. Please try again.');
+      } else {
+        input.value = '';
+        // Show the message immediately instead of waiting on the realtime
+        // subscription (which requires Realtime to be enabled on the
+        // `messages` table in the Supabase dashboard, and previously left
+        // both sent and received messages invisible until a full reload).
+        if (data) appendMessage(data);
+        await loadConversationList();
+      }
+      sendBtn.disabled = false;
+    }
+
+    async function logout() {
+      await auth.signOut();
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>

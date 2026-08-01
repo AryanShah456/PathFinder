@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apply for Opportunity | PathFinder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    :root { --bg: #0b0f14; --card: #111827; --accent: #facc15; --text-secondary: #9ca3af; --border: #1f2937; }
+    body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; }
+    nav { background: var(--card); padding: 0 60px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); height: 70px; }
+    .nav-logo { font-weight: 700; color: var(--accent); font-size: 20px; text-decoration: none; }
+    .nav-links { display: flex; gap: 30px; }
+    .nav-item { text-decoration: none; color: var(--text-secondary); font-size: 14px; font-weight: 500; transition: 0.3s; cursor: pointer; }
+    .nav-item:hover { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 15px; }
+    .user-pill { display: flex; align-items: center; gap: 10px; color: white; font-size: 14px; }
+    .avatar-circle { width: 32px; height: 32px; background: var(--accent); border-radius: 50%; color: black; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .logout-btn { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    .logout-btn:hover { background: #ef4444; color: white; }
+
+    .main-content { display: flex; min-height: 100vh; padding: 40px; gap: 30px; box-sizing: border-box; }
+    .left-panel { flex: 1; background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); height: fit-content; }
+    .back-link { color: var(--text-secondary); text-decoration: none; font-size: 14px; display: inline-block; margin-bottom: 20px; }
+    .back-link:hover { color: var(--accent); }
+    .tag-row { display: flex; gap: 8px; margin-bottom: 15px; }
+    .tag { background: rgba(250, 204, 21, 0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid rgba(250, 204, 21, 0.3); }
+    h1.opp-title { font-size: 32px; margin: 0 0 10px 0; }
+    .opp-company { color: var(--text-secondary); font-size: 18px; margin-bottom: 25px; }
+    .opp-meta { display: flex; gap: 20px; color: var(--accent); font-size: 14px; margin-bottom: 30px; }
+    .section-title { border-top: 1px solid var(--border); padding-top: 25px; margin-top: 30px; font-size: 18px; font-weight: 600; }
+    .section-text { color: #d1d5db; line-height: 1.6; font-size: 14px; white-space: pre-wrap; }
+
+    .right-panel { width: 450px; background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); height: fit-content; position: sticky; top: 40px; }
+    .right-panel h2 { margin-top: 0; color: var(--accent); font-size: 20px; }
+    .applicant-info { background: var(--bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); margin-bottom: 20px; }
+    .applicant-info p { margin: 0; font-size: 14px; line-height: 1.6; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); }
+    .form-group textarea, .form-group input { width: 100%; background: var(--bg); border: 1px solid #374151; color: white; border-radius: 8px; padding: 12px; font-family: inherit; font-size: 14px; box-sizing: border-box; transition: 0.2s; }
+    .form-group textarea:focus, .form-group input:focus { outline: none; border-color: var(--accent); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .char-count { font-size: 11px; color: var(--text-secondary); text-align: right; margin-top: 4px; }
+
+    .submit-btn { background: var(--accent); color: #111827; border: none; padding: 15px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; font-size: 14px; transition: 0.2s; font-family: inherit; }
+    .submit-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .error-message { color: #ef4444; font-size: 13px; margin-bottom: 15px; }
+    .success-message { color: #34d399; font-size: 13px; margin-bottom: 15px; }
+
+    .cv-upload-area { 
+      background: var(--bg); 
+      border: 2px dashed #374151; 
+      border-radius: 8px; 
+      padding: 20px; 
+      text-align: center; 
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+    }
+    .cv-upload-area:hover { border-color: var(--accent); }
+    .cv-upload-area.has-file { border-color: #10b981; border-style: solid; }
+    .cv-upload-area .upload-icon { font-size: 24px; margin-bottom: 8px; }
+    .cv-upload-area .upload-text { color: var(--text-secondary); font-size: 13px; }
+    .cv-upload-area .upload-filename { color: var(--accent); font-size: 13px; font-weight: 600; margin-top: 8px; }
+    .cv-upload-area .upload-hint { color: #6b7280; font-size: 11px; margin-top: 4px; }
+    .cv-upload-area input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+    .progress-bar-outer { background: var(--bg); border-radius: 6px; height: 8px; overflow: hidden; margin-top: 10px; display: none; }
+    .progress-bar-inner { background: var(--accent); height: 100%; width: 0%; transition: width 0.3s; }
+
+    .loading-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.3); border-radius: 50%; border-top-color: #111827; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .main-content { flex-direction: column; }
+      .right-panel { width: 100%; position: static; }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <a href="studentdashboard.html" class="nav-logo">PathFinder</a>
+    <div class="nav-links">
+      <a href="studentdashboard.html" class="nav-item">Browse</a>
+      <a href="myapplication.html" class="nav-item">My Applications</a>
+      <a href="messaging.html" class="nav-item">Messages</a>
+      <a href="studentprofile.html" class="nav-item">Profile</a>
+    </div>
+    <div class="nav-right">
+      <div class="user-pill">
+        <span id="user-name-display">Loading...</span>
+        <div class="avatar-circle" id="user-initial">?</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="left-panel">
+      <a href="studentdashboard.html" class="back-link">← Back to Opportunities</a>
+      <div id="oppTags" class="tag-row"></div>
+      <h1 id="oppTitle" class="opp-title">Loading...</h1>
+      <p id="oppCompany" class="opp-company">...</p>
+      <div id="oppMeta" class="opp-meta"></div>
+      <h3 class="section-title">About This Opportunity</h3>
+      <p id="oppDesc" class="section-text">...</p>
+      <h3 class="section-title">Requirements</h3>
+      <p id="oppReqs" class="section-text">...</p>
+    </div>
+
+    <div class="right-panel">
+      <h2>Complete Application</h2>
+      <div class="applicant-info">
+        <p><strong>Applicant:</strong> <span id="studentName">...</span></p>
+        <p><strong>Grade:</strong> <span id="studentGrade">...</span></p>
+      </div>
+
+      <div class="error-message" id="error"></div>
+      <div class="success-message" id="success"></div>
+
+      <div class="form-group">
+        <label for="q1">Why do you deserve this role?</label>
+        <textarea id="q1" maxlength="1000" rows="4" placeholder="Describe your skills and why you're a good fit..." oninput="updateCharCount('q1')"></textarea>
+        <div class="char-count" id="q1Count">0 / 1000</div>
+      </div>
+
+      <div class="form-group">
+        <label for="q2">Why are you interested?</label>
+        <textarea id="q2" maxlength="1000" rows="4" placeholder="What interests you about this opportunity?" oninput="updateCharCount('q2')"></textarea>
+        <div class="char-count" id="q2Count">0 / 1000</div>
+      </div>
+
+      <div class="form-group">
+        <label>CV / Portfolio (PDF, max 5MB)</label>
+        <div class="cv-upload-area" id="cvUploadArea">
+          <input type="file" id="cvFile" accept="application/pdf" onchange="handleFileSelect(event)">
+          <div class="upload-icon" id="uploadIcon">📄</div>
+          <div class="upload-text" id="uploadText">Click or drag to upload your CV</div>
+          <div class="upload-filename" id="uploadFilename" style="display:none;"></div>
+          <div class="upload-hint" id="uploadHint">PDF only, up to 5MB</div>
+          <div class="progress-bar-outer" id="progressOuter">
+            <div class="progress-bar-inner" id="progressInner"></div>
+          </div>
+        </div>
+      </div>
+
+      <button id="submitBtn" class="submit-btn" onclick="submitApplication()">Submit Application</button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const oppId = urlParams.get('id');
+    let postedBy = "";
+    let oppType = "";
+    let oppSchool = "";
+    let currentUser = null;
+    let myProfile = null;
+    let cvPath = null;   // Supabase storage path
+    let cvUrl = null;    // Public URL
+
+    requireAuth(async (user, profile) => {
+      currentUser = user;
+      myProfile = profile;
+      if (profile) {
+        safeText('user-name-display', profile.name);
+        safeText('studentName', profile.name);
+        safeText('studentGrade', profile.grade || "N/A");
+        const initialEl = document.getElementById('user-initial');
+        if (initialEl && profile.name) initialEl.textContent = profile.name.charAt(0).toUpperCase();
+      }
+      if (oppId) {
+        await loadOpportunity();
+      } else {
+        safeText('oppTitle', 'Invalid Opportunity');
+        document.getElementById('submitBtn').disabled = true;
+      }
+    });
+
+    function updateCharCount(id) {
+      const el = document.getElementById(id);
+      document.getElementById(id + 'Count').textContent = `${el.value.length} / 1000`;
+    }
+
+    async function loadOpportunity() {
+      const { data, error } = await db
+        .from('opportunities')
+        .select('*')
+        .eq('id', oppId)
+        .single();
+
+      if (error || !data) {
+        safeText('oppTitle', error ? 'Error Loading Opportunity' : 'Opportunity Not Found');
+        document.getElementById('submitBtn').disabled = true;
+        return;
+      }
+
+      postedBy = data.posted_by;
+      oppType = data.type;
+      oppSchool = data.school;
+
+      safeText('oppTitle', data.title);
+      safeText('oppCompany', data.parent_name || 'Community Member');
+      safeText('oppDesc', data.description || 'No description provided.');
+      safeText('oppReqs', data.requirements || "No specific requirements listed.");
+
+      // Internships are restricted to students from the same school as the
+      // posting parent. Job Shadowing stays open to everyone.
+      if (data.type === 'Internship' && myProfile && myProfile.school !== data.school) {
+        showError(`This internship is only open to students at ${data.school || 'the posting school'}.`);
+        document.getElementById('submitBtn').disabled = true;
+      }
+
+      const meta = document.getElementById('oppMeta');
+      meta.innerHTML = '';
+      const location = document.createElement('span');
+      location.textContent = '📍 ' + (data.location || 'Remote');
+      meta.appendChild(location);
+      const spots = document.createElement('span');
+      spots.textContent = '👥 ' + (data.spots || '1') + ' spot' + (data.spots > 1 ? 's' : '');
+      meta.appendChild(spots);
+
+      const tags = document.getElementById('oppTags');
+      tags.innerHTML = '';
+      if (data.type) {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = data.type;
+        tags.appendChild(tag);
+      }
+    }
+
+    async function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = '';
+
+      if (file.type !== 'application/pdf') {
+        showError('CV must be a PDF file.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showError('CV file must be under 5MB.');
+        return;
+      }
+
+      const progressOuter = document.getElementById('progressOuter');
+      const progressInner = document.getElementById('progressInner');
+      progressOuter.style.display = 'block';
+      progressInner.style.width = '30%';
+
+      try {
+        const result = await uploadCV(file, currentUser.id);
+        cvPath = result.path;
+        cvUrl = result.url;
+
+        progressInner.style.width = '100%';
+
+        const uploadArea = document.getElementById('cvUploadArea');
+        uploadArea.classList.add('has-file');
+        document.getElementById('uploadIcon').textContent = '✅';
+        document.getElementById('uploadText').textContent = 'CV uploaded successfully';
+        const filenameEl = document.getElementById('uploadFilename');
+        filenameEl.textContent = file.name;
+        filenameEl.style.display = 'block';
+        document.getElementById('uploadHint').textContent = 'Click to replace';
+
+        showSuccess('CV uploaded');
+      } catch (err) {
+        console.error('Upload error:', err);
+        showError('CV upload failed: ' + err.message);
+        progressOuter.style.display = 'none';
+      }
+    }
+
+    function showError(message) {
+      document.getElementById('error').textContent = message;
+      document.getElementById('success').textContent = '';
+    }
+
+    function showSuccess(message) {
+      document.getElementById('success').textContent = message;
+      document.getElementById('error').textContent = '';
+    }
+
+    function clearMessages() {
+      document.getElementById('error').textContent = '';
+      document.getElementById('success').textContent = '';
+    }
+
+    async function submitApplication() {
+      const errorDiv = document.getElementById('error');
+      const submitBtn = document.getElementById('submitBtn');
+      clearMessages();
+
+      if (!postedBy) {
+        showError('The opportunity data is still loading. Please wait and try again.');
+        return;
+      }
+
+      if (oppType === 'Internship' && myProfile && myProfile.school !== oppSchool) {
+        showError(`This internship is only open to students at ${oppSchool || 'the posting school'}.`);
+        return;
+      }
+
+      const q1 = document.getElementById('q1').value.trim();
+      const q2 = document.getElementById('q2').value.trim();
+
+      if (!q1 || !q2) {
+        showError('Please fill in both questions.');
+        return;
+      }
+      if (!cvUrl || !cvPath) {
+        showError('Please upload your CV.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> Submitting...';
+
+      const { error } = await db
+        .from('applications')
+        .insert({
+          opportunity_id: oppId,
+          opportunity_title: document.getElementById('oppTitle').textContent,
+          student_id: currentUser.id,
+          student_name: document.getElementById('studentName').textContent,
+          student_grade: document.getElementById('studentGrade').textContent,
+          parent_id: postedBy,
+          q1: q1,
+          q2: q2,
+          cv_url: cvUrl,
+          cv_path: cvPath,
+          status: 'Pending'
+        });
+
+      if (error) {
+        console.error('Submit error:', error);
+        showError('Submission failed: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Application';
+        return;
+      }
+
+      window.location.href = "myapplication.html";
+    }
+
+    async function logout() {
+      await auth.signOut();
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>

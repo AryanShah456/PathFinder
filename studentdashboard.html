@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFinder | Browse Opportunities</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <style>
+    :root { --bg-dark: #0b0f14; --card-bg: #111827; --accent-yellow: #facc15; --text-gray: #9ca3af; --input-bg: #0f172a; --border-color: #1f2937; --blue: #2563eb; }
+    * { box-sizing: border-box; }
+    body { background: var(--bg-dark); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; }
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 60px; background: rgba(17, 24, 39, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; }
+    .logo-icon { background: var(--accent-yellow); color: black; padding: 5px; border-radius: 6px; }
+    .nav-links { display: flex; gap: 30px; font-size: 14px; }
+    .nav-links a { color: var(--text-gray); text-decoration: none; transition: 0.3s; }
+    .nav-links a:hover, .nav-links a.active { color: white; }
+    .profile-area { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
+    .logout-btn { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+    .logout-btn:hover { background: #ef4444; color: white; }
+
+    .container { padding: 40px 60px; max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 32px; margin-bottom: 10px; }
+    .subtitle { color: var(--text-gray); margin-bottom: 40px; font-size: 16px; }
+
+    .filter-bar { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+    .search-input { flex-grow: 1; min-width: 250px; background: var(--input-bg); border: 1px solid var(--border-color); padding: 12px 20px; border-radius: 8px; color: white; font-family: inherit; font-size: 14px; transition: 0.2s; }
+    .search-input:focus { outline: none; border-color: var(--accent-yellow); }
+    .filter-select { background: var(--input-bg); border: 1px solid var(--border-color); color: white; padding: 12px 15px; border-radius: 8px; font-family: inherit; font-size: 14px; cursor: pointer; min-width: 150px; }
+    .filter-select:focus { outline: none; border-color: var(--accent-yellow); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
+    .opportunity-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 24px; transition: 0.3s; display: flex; flex-direction: column; }
+    .opportunity-card:hover { transform: translateY(-5px); border-color: var(--accent-yellow); }
+
+    .tag-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+    .tag { padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 600; border: 1px solid; }
+    .tag-intern { background: rgba(250, 204, 21, 0.1); color: var(--accent-yellow); border-color: rgba(250, 204, 21, 0.3); }
+    .tag-shadow { background: rgba(37, 99, 235, 0.1); color: #60a5fa; border-color: rgba(37, 99, 235, 0.3); }
+
+    .card-title { font-size: 20px; margin: 0 0 8px 0; font-weight: 600; }
+    .company { color: var(--text-gray); font-size: 14px; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
+    .description { font-size: 14px; color: var(--text-gray); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 16px; color: var(--accent-yellow); font-size: 13px; margin-bottom: 20px; }
+    .meta-item { display: flex; align-items: center; gap: 4px; }
+
+    .details-btn { width: 100%; padding: 12px; background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; display: inline-block; transition: 0.2s; font-family: inherit; font-size: 14px; }
+    .details-btn:hover { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+
+    .load-more-wrap { text-align: center; margin-top: 30px; grid-column: 1 / -1; }
+    .load-more-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: white; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; }
+    .load-more-btn:hover { border-color: var(--accent-yellow); }
+    .load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .loading-container { text-align: center; padding: 60px 20px; color: var(--text-gray); grid-column: 1 / -1; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-gray); grid-column: 1 / -1; }
+    .empty-state h3 { color: white; margin-bottom: 10px; }
+    .error-state { text-align: center; padding: 60px 20px; color: #ef4444; grid-column: 1 / -1; }
+
+    @media (max-width: 768px) {
+      nav { padding: 15px 20px; }
+      .container { padding: 20px; }
+      .grid { grid-template-columns: 1fr; }
+      .filter-bar { flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo"><div class="logo-icon">🎓</div> PathFinder</div>
+    <div class="nav-links">
+      <a href="studentdashboard.html" class="active">Browse</a>
+      <a href="myapplication.html">My Applications</a>
+      <a href="messaging.html">Messages</a>
+      <a href="studentprofile.html">Profile</a>
+    </div>
+    <div class="profile-area">
+      <span id="user-name-display">Loading...</span>
+      <div class="avatar" id="user-initial">?</div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>Browse Opportunities</h1>
+    <p class="subtitle">Discover internships and job shadowing experiences from our community</p>
+
+    <div class="filter-bar">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by title, company, or description..." onkeyup="filterOpportunities()">
+      <select class="filter-select" id="typeFilter" onchange="filterOpportunities()">
+        <option value="all">All Types</option>
+        <option value="Internship">Internship</option>
+        <option value="Job Shadowing">Job Shadowing</option>
+      </select>
+      <select class="filter-select" id="sortFilter" onchange="filterOpportunities()">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+      </select>
+    </div>
+
+    <div id="opportunity-grid" class="grid">
+      <div class="loading-container"><p>Loading opportunities...</p></div>
+    </div>
+  </div>
+
+  <script>
+    let allOpportunities = [];
+    let currentPage = 0;
+    const PAGE_SIZE = 30;
+    let isLoadingPage = false;
+    let noMoreResults = false;
+    let myProfile = null;
+
+    requireAuth(async (user, profile) => {
+      myProfile = profile;
+      if (profile) {
+        safeText('user-name-display', profile.name);
+        const initialEl = document.getElementById('user-initial');
+        if (initialEl && profile.name) initialEl.textContent = profile.name.charAt(0).toUpperCase();
+      }
+      await loadOpportunitiesPage(true);
+    });
+
+    async function loadOpportunitiesPage(isFirstPage) {
+      if (isLoadingPage || noMoreResults) return;
+      isLoadingPage = true;
+
+      const grid = document.getElementById('opportunity-grid');
+      if (isFirstPage) {
+        allOpportunities = [];
+        currentPage = 0;
+        noMoreResults = false;
+        grid.innerHTML = '<div class="loading-container"><p>Loading opportunities...</p></div>';
+      }
+
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await db
+        .from('opportunities')
+        .select('*')
+        .eq('listing_status', 'Open')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        console.error('Opportunities load error:', error);
+        grid.innerHTML = `<div class="error-state"><h3>Failed to load opportunities</h3>
+          <button onclick="loadOpportunitiesPage(true)" class="details-btn" style="margin-top:15px; max-width:200px;">Retry</button></div>`;
+        isLoadingPage = false;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        noMoreResults = true;
+      } else {
+        allOpportunities = allOpportunities.concat(data);
+        currentPage++;
+        if (data.length < PAGE_SIZE) noMoreResults = true;
+      }
+
+      filterOpportunities();
+      isLoadingPage = false;
+    }
+
+    function filterOpportunities() {
+      const grid = document.getElementById('opportunity-grid');
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+      const typeFilter = document.getElementById('typeFilter').value;
+      const sortFilter = document.getElementById('sortFilter').value;
+
+      let filtered = allOpportunities.filter(opp => {
+        const matchesSearch = !searchQuery ||
+          (opp.title && opp.title.toLowerCase().includes(searchQuery)) ||
+          (opp.parent_name && opp.parent_name.toLowerCase().includes(searchQuery)) ||
+          (opp.description && opp.description.toLowerCase().includes(searchQuery));
+        const matchesType = typeFilter === 'all' || opp.type === typeFilter;
+        // Internships are only open to students from the same school as the
+        // posting parent; Job Shadowing stays open to everyone.
+        const matchesSchool = opp.type !== 'Internship' ||
+          (myProfile && myProfile.school && opp.school === myProfile.school);
+        return matchesSearch && matchesType && matchesSchool;
+      });
+
+      if (sortFilter === 'oldest') filtered.reverse();
+
+      grid.innerHTML = '';
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><h3>No opportunities found</h3><p>Try adjusting your search or filters.</p></div>`;
+        return;
+      }
+
+      filtered.forEach(data => {
+        const card = document.createElement('div');
+        card.className = 'opportunity-card';
+
+        const tagRow = document.createElement('div');
+        tagRow.className = 'tag-row';
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + (data.type === 'Job Shadowing' ? 'tag-shadow' : 'tag-intern');
+        tag.textContent = data.type || 'Internship';
+        tagRow.appendChild(tag);
+
+        const title = document.createElement('h3');
+        title.className = 'card-title';
+        title.textContent = data.title || 'Untitled Opportunity';
+
+        const company = document.createElement('div');
+        company.className = 'company';
+        const companyIcon = document.createElement('span');
+        companyIcon.textContent = '🏢 ';
+        const companyName = document.createElement('span');
+        companyName.textContent = data.parent_name || 'Community Member';
+        company.appendChild(companyIcon);
+        company.appendChild(companyName);
+
+        const desc = document.createElement('p');
+        desc.className = 'description';
+        desc.textContent = data.description || 'No description provided.';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta-row';
+        const duration = document.createElement('span');
+        duration.className = 'meta-item';
+        duration.textContent = '⏱️ ' + (data.duration || 'TBD');
+        const spots = document.createElement('span');
+        spots.className = 'meta-item';
+        spots.textContent = '👥 ' + (data.spots || '1') + ' spot' + (data.spots > 1 ? 's' : '');
+        meta.appendChild(duration);
+        meta.appendChild(spots);
+
+        const btn = document.createElement('a');
+        btn.className = 'details-btn';
+        btn.href = 'apply.html?id=' + encodeURIComponent(data.id);
+        btn.textContent = 'View Details';
+
+        card.appendChild(tagRow);
+        card.appendChild(title);
+        card.appendChild(company);
+        card.appendChild(desc);
+        card.appendChild(meta);
+        card.appendChild(btn);
+
+        grid.appendChild(card);
+      });
+
+      if (!noMoreResults && !searchQuery && typeFilter === 'all') {
+        const wrap = document.createElement('div');
+        wrap.className = 'load-more-wrap';
+        const btn = document.createElement('button');
+        btn.className = 'load-more-btn';
+        btn.textContent = 'Load more opportunities';
+        btn.onclick = () => loadOpportunitiesPage(false);
+        wrap.appendChild(btn);
+        grid.appendChild(wrap);
+      }
+    }
+
+    async function logout() {
+      await auth.signOut();
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>
